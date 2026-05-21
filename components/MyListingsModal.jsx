@@ -28,13 +28,21 @@ export default function MyListingsModal({ user, onClose }) {
   const [payingId, setPayingId] = useState(null);
 
   async function load() {
-    if (!user?.id) return;
+    // KRITIK FIX:
+    // Production'da user geç gelirse loading sonsuz kalıyordu.
+    if (!user?.id) {
+      setLoading(false);
+      setItems([]);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const rows = await getMyListings(user.id);
-      setItems(rows.map(normalizeListing));
+      setItems((rows || []).map(normalizeListing));
     } catch (error) {
+      console.error(error);
       alert(error.message || 'İlanların yüklenemedi.');
     } finally {
       setLoading(false);
@@ -102,19 +110,29 @@ export default function MyListingsModal({ user, onClose }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={load} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm">
+            <button
+              onClick={load}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm"
+            >
               <span className="inline-flex items-center gap-2">
                 <RefreshCw size={15} /> Yenile
               </span>
             </button>
 
-            <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 hover:bg-slate-100"
+            >
               <X />
             </button>
           </div>
         </div>
 
-        {loading && <p className="text-sm text-slate-500">İlanların yükleniyor...</p>}
+        {loading && (
+          <p className="text-sm text-slate-500">
+            İlanların yükleniyor...
+          </p>
+        )}
 
         {!loading && items.length === 0 && (
           <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-500 ring-1 ring-slate-200">
@@ -122,60 +140,68 @@ export default function MyListingsModal({ user, onClose }) {
           </div>
         )}
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <div key={item.id} className="relative rounded-3xl bg-white">
-              <ListingCard item={item} onClick={() => setEditing(item)} />
+        {!loading && items.length > 0 && (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => (
+              <div key={item.id} className="relative">
+                <ListingCard listing={item} />
 
-              <div className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black ring-1 backdrop-blur-sm ${statusClass(item.status)}`}>
-                {statusLabel(item.status)}
-              </div>
-
-              <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
-                {item.status === 'approved' && !item.isFeatured && (
+                <div className="mt-3 flex flex-wrap gap-2">
                   <button
-                    onClick={() => handlePremium(item)}
-                    disabled={payingId === item.id}
-                    className="rounded-2xl bg-amber-500 px-3 py-2 text-xs font-black text-white shadow-sm ring-1 ring-amber-300 disabled:opacity-60"
+                    onClick={() => setEditing(item)}
+                    className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-bold"
                   >
-                    <span className="inline-flex items-center gap-1">
-                      <Crown size={13} />
-                      {payingId === item.id ? 'Yönlendiriliyor...' : 'Premium Yap'}
+                    <span className="inline-flex items-center gap-2">
+                      <Pencil size={15} /> Düzenle
                     </span>
                   </button>
-                )}
 
-                <button
-                  onClick={() => setEditing(item)}
-                  className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm ring-1 ring-slate-200"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <Pencil size={13} /> Düzenle
-                  </span>
-                </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Trash2 size={15} /> Sil
+                    </span>
+                  </button>
 
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-red-600 shadow-sm ring-1 ring-red-100"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <Trash2 size={13} /> Sil
+                  {!item.is_featured && (
+                    <button
+                      disabled={payingId === item.id}
+                      onClick={() => handlePremium(item)}
+                      className="rounded-2xl bg-amber-400 px-4 py-2 text-sm font-black text-white"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <Crown size={15} />
+                        {payingId === item.id ? 'Yönlendiriliyor...' : 'Premium Yap'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-3">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass(item.status)}`}
+                  >
+                    {statusLabel(item.status)}
                   </span>
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+        )}
 
-      {editing && (
-        <EditListingModal
-          user={user}
-          listing={editing}
-          onClose={() => setEditing(null)}
-          onUpdated={load}
-        />
-      )}
+        {editing && (
+          <EditListingModal
+            listing={editing}
+            onClose={() => setEditing(null)}
+            onUpdated={() => {
+              setEditing(null);
+              load();
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
