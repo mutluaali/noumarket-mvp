@@ -1,0 +1,5 @@
+{
+  "brand": { "name": "NouMarket", "tagline": "Plateforme d’annonces en Nouvelle-Calédonie" },
+  "nav": { "login": "Connexion", "logout": "Déconnexion", "myListings": "Mes annonces", "messages": "Messages", "favorites": "Favoris", "notifications": "Notifications", "premium": "Premium", "create": "Publier une annonce" },
+  "home": { "headline": "Achetez, vendez, louez et trouvez des services à Nouméa.", "subtitle": "Une place de marché locale pour véhicules, immobilier, nautisme, électronique et services." }
+}

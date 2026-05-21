@@ -1,0 +1,5 @@
+{
+  "brand": { "name": "NouMarket", "tagline": "New Caledonia classifieds platform" },
+  "nav": { "login": "Log in", "logout": "Log out", "myListings": "My listings", "messages": "Messages", "favorites": "Favorites", "notifications": "Notifications", "premium": "Premium", "create": "Post listing" },
+  "home": { "headline": "Buy, sell, rent and find services in Nouméa.", "subtitle": "A local marketplace for vehicles, property, marine gear, electronics and services." }
+}

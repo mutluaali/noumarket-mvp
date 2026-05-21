@@ -1,0 +1,5 @@
+{
+  "brand": { "name": "NouMarket", "tagline": "Yeni Kaledonya ilan platformu" },
+  "nav": { "login": "Giriş Yap", "logout": "Çıkış Yap", "myListings": "İlanlarım", "messages": "Mesajlarım", "favorites": "Favorilerim", "notifications": "Bildirimler", "premium": "Premium", "create": "İlan Ver" },
+  "home": { "headline": "Nouméa’da al, sat, kirala, iş bul.", "subtitle": "Araç, ev, tekne ekipmanı, elektronik ve hizmet ilanlarını tek yerde toplayan modern yerel pazar yeri." }
+}
