@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { X, RefreshCw, Trash2, Pencil, Crown } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { getMyListings, deleteMyListing } from '@/lib/myListings';
 import { normalizeListing } from '@/lib/listings';
 import ListingCard from '@/components/ListingCard';
@@ -22,28 +23,50 @@ function statusClass(status) {
 }
 
 export default function MyListingsModal({ user, onClose }) {
+  const [effectiveUser, setEffectiveUser] = useState(user || null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [payingId, setPayingId] = useState(null);
+  const [errorText, setErrorText] = useState('');
 
-  async function load() {
-    // KRITIK FIX:
-    // Production'da user geç gelirse loading sonsuz kalıyordu.
-    if (!user?.id) {
-      setLoading(false);
-      setItems([]);
-      return;
+  useEffect(() => {
+    setEffectiveUser(user || null);
+  }, [user?.id]);
+
+  async function resolveUser() {
+    if (user?.id) return user;
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error) {
+      console.error('getUser error:', error);
+      return null;
     }
 
+    return data?.user || null;
+  }
+
+  async function load() {
     setLoading(true);
+    setErrorText('');
 
     try {
-      const rows = await getMyListings(user.id);
+      const currentUser = await resolveUser();
+      setEffectiveUser(currentUser);
+
+      if (!currentUser?.id) {
+        setItems([]);
+        setErrorText('Giriş oturumu bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.');
+        return;
+      }
+
+      const rows = await getMyListings(currentUser.id);
       setItems((rows || []).map(normalizeListing));
     } catch (error) {
-      console.error(error);
-      alert(error.message || 'İlanların yüklenemedi.');
+      console.error('MyListingsModal load error:', error);
+      setItems([]);
+      setErrorText(error.message || 'İlanların yüklenemedi.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +89,9 @@ export default function MyListingsModal({ user, onClose }) {
   }
 
   async function handlePremium(item) {
-    if (!user?.id) {
+    const currentUser = effectiveUser || user;
+
+    if (!currentUser?.id) {
       alert('Premium satın almak için giriş yapmalısın.');
       return;
     }
@@ -79,8 +104,8 @@ export default function MyListingsModal({ user, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           listingId: item.id,
-          userId: user.id,
-          plan: 'featured_7_days',
+          userId: currentUser.id,
+          planId: 'premium_7',
         }),
       });
 
@@ -119,72 +144,69 @@ export default function MyListingsModal({ user, onClose }) {
               </span>
             </button>
 
-            <button
-              onClick={onClose}
-              className="rounded-full p-2 hover:bg-slate-100"
-            >
+            <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
               <X />
             </button>
           </div>
         </div>
 
         {loading && (
-          <p className="text-sm text-slate-500">
-            İlanların yükleniyor...
-          </p>
+          <p className="text-sm text-slate-500">İlanların yükleniyor...</p>
         )}
 
-        {!loading && items.length === 0 && (
+        {!loading && errorText && (
+          <div className="rounded-3xl bg-red-50 p-5 text-sm font-semibold text-red-700 ring-1 ring-red-100">
+            {errorText}
+          </div>
+        )}
+
+        {!loading && !errorText && items.length === 0 && (
           <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-500 ring-1 ring-slate-200">
             Henüz ilan oluşturmamışsın.
           </div>
         )}
 
-        {!loading && items.length > 0 && (
+        {!loading && !errorText && items.length > 0 && (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <div key={item.id} className="relative">
-                <ListingCard listing={item} />
+              <div key={item.id} className="relative rounded-3xl bg-white">
+                <ListingCard item={item} onClick={() => setEditing(item)} />
 
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black ring-1 backdrop-blur-sm ${statusClass(item.status)}`}>
+                  {statusLabel(item.status)}
+                </div>
+
+                <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
+                  {item.status === 'approved' && !item.isFeatured && (
+                    <button
+                      onClick={() => handlePremium(item)}
+                      disabled={payingId === item.id}
+                      className="rounded-2xl bg-amber-500 px-3 py-2 text-xs font-black text-white shadow-sm ring-1 ring-amber-300 disabled:opacity-60"
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        <Crown size={13} />
+                        {payingId === item.id ? 'Yönlendiriliyor...' : 'Premium Yap'}
+                      </span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setEditing(item)}
-                    className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-bold"
+                    className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm ring-1 ring-slate-200"
                   >
-                    <span className="inline-flex items-center gap-2">
-                      <Pencil size={15} /> Düzenle
+                    <span className="inline-flex items-center gap-1">
+                      <Pencil size={13} /> Düzenle
                     </span>
                   </button>
 
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-bold text-red-600"
+                    className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-red-600 shadow-sm ring-1 ring-red-100"
                   >
-                    <span className="inline-flex items-center gap-2">
-                      <Trash2 size={15} /> Sil
+                    <span className="inline-flex items-center gap-1">
+                      <Trash2 size={13} /> Sil
                     </span>
                   </button>
-
-                  {!item.is_featured && (
-                    <button
-                      disabled={payingId === item.id}
-                      onClick={() => handlePremium(item)}
-                      className="rounded-2xl bg-amber-400 px-4 py-2 text-sm font-black text-white"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <Crown size={15} />
-                        {payingId === item.id ? 'Yönlendiriliyor...' : 'Premium Yap'}
-                      </span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${statusClass(item.status)}`}
-                  >
-                    {statusLabel(item.status)}
-                  </span>
                 </div>
               </div>
             ))}
@@ -193,12 +215,10 @@ export default function MyListingsModal({ user, onClose }) {
 
         {editing && (
           <EditListingModal
+            user={effectiveUser || user}
             listing={editing}
             onClose={() => setEditing(null)}
-            onUpdated={() => {
-              setEditing(null);
-              load();
-            }}
+            onUpdated={load}
           />
         )}
       </div>
