@@ -22,10 +22,21 @@ function statusClass(status) {
   return 'bg-slate-50 text-slate-700 ring-slate-200';
 }
 
+function withTimeout(promise, ms, label = 'İşlem') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`${label} zaman aşımına uğradı. Sayfayı yenileyip tekrar dene.`));
+      }, ms);
+    }),
+  ]);
+}
+
 export default function MyListingsModal({ user, onClose }) {
   const [effectiveUser, setEffectiveUser] = useState(user || null);
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [payingId, setPayingId] = useState(null);
   const [errorText, setErrorText] = useState('');
@@ -37,14 +48,28 @@ export default function MyListingsModal({ user, onClose }) {
   async function resolveUser() {
     if (user?.id) return user;
 
-    const { data, error } = await supabase.auth.getUser();
+    const sessionResult = await withTimeout(
+      supabase.auth.getSession(),
+      6000,
+      'Oturum kontrolü'
+    );
 
-    if (error) {
-      console.error('getUser error:', error);
+    if (sessionResult?.data?.session?.user) {
+      return sessionResult.data.session.user;
+    }
+
+    const userResult = await withTimeout(
+      supabase.auth.getUser(),
+      6000,
+      'Kullanıcı kontrolü'
+    );
+
+    if (userResult?.error) {
+      console.error('getUser error:', userResult.error);
       return null;
     }
 
-    return data?.user || null;
+    return userResult?.data?.user || null;
   }
 
   async function load() {
@@ -53,15 +78,20 @@ export default function MyListingsModal({ user, onClose }) {
 
     try {
       const currentUser = await resolveUser();
-      setEffectiveUser(currentUser);
+      setEffectiveUser(currentUser || null);
 
       if (!currentUser?.id) {
         setItems([]);
-        setErrorText('Giriş oturumu bulunamadı. Lütfen çıkış yapıp tekrar giriş yap.');
+        setErrorText('Giriş oturumu bulunamadı. Lütfen sayfayı yenileyip tekrar giriş yap.');
         return;
       }
 
-      const rows = await getMyListings(currentUser.id);
+      const rows = await withTimeout(
+        getMyListings(currentUser.id),
+        10000,
+        'İlan sorgusu'
+      );
+
       setItems((rows || []).map(normalizeListing));
     } catch (error) {
       console.error('MyListingsModal load error:', error);
@@ -74,6 +104,7 @@ export default function MyListingsModal({ user, onClose }) {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   async function handleDelete(id) {
@@ -137,7 +168,8 @@ export default function MyListingsModal({ user, onClose }) {
           <div className="flex items-center gap-2">
             <button
               onClick={load}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm"
+              disabled={loading}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm disabled:opacity-60"
             >
               <span className="inline-flex items-center gap-2">
                 <RefreshCw size={15} /> Yenile
