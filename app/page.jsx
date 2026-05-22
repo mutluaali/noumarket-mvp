@@ -44,6 +44,38 @@ export default function HomePage(){
  const [showFavorites,setShowFavorites]=useState(false);
  const [showNotifications,setShowNotifications]=useState(false);
  const [notificationCount,setNotificationCount]=useState(0);
+
+ // Eski PWA/service-worker cache'i production'da eski bundle çalıştırıyordu.
+ // Bu temizlik bir kez yapılır ve eski JS/cache kilitlerini kırar.
+ useEffect(() => {
+   if (typeof window === 'undefined') return;
+
+   const cleanupKey = 'noumarket_cache_cleanup_v4';
+
+   async function cleanupOldCaches() {
+     if (window.localStorage.getItem(cleanupKey) === 'done') return;
+
+     window.localStorage.setItem(cleanupKey, 'done');
+
+     try {
+       if ('serviceWorker' in navigator) {
+         const registrations = await navigator.serviceWorker.getRegistrations();
+         await Promise.all(registrations.map((registration) => registration.unregister()));
+       }
+
+       if ('caches' in window) {
+         const cacheNames = await caches.keys();
+         await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
+       }
+     } catch (error) {
+       console.error('cache cleanup error:', error);
+     }
+
+     window.location.reload();
+   }
+
+   cleanupOldCaches();
+ }, []);
  const [activeConversation,setActiveConversation]=useState(null);
 
  async function refreshProfile(currentUser){
@@ -103,24 +135,47 @@ export default function HomePage(){
  }
 
  useEffect(()=>{
-   supabase.auth.getUser().then(async ({data})=>{
-     const currentUser = data.user ?? null;
-     setUser(currentUser);
-     await refreshProfile(currentUser);
-     await refreshNotifications(currentUser);
-   });
+   let alive = true;
+
+   async function bootAuth(){
+     try{
+       const { data } = await supabase.auth.getSession();
+       const currentUser = data?.session?.user ?? null;
+
+       if(!alive) return;
+
+       setUser(currentUser);
+       await refreshProfile(currentUser);
+       await refreshNotifications(currentUser);
+       await refreshListings();
+     }catch(error){
+       console.error('auth boot error:', error);
+       if(!alive) return;
+       setUser(null);
+       setProfile(null);
+       setIsAdmin(false);
+       await refreshListings();
+     }
+   }
+
+   bootAuth();
 
    const {data:listener}=supabase.auth.onAuthStateChange(async (_event,session)=>{
      const currentUser = session?.user ?? null;
+
      setUser(currentUser);
      await refreshProfile(currentUser);
      await refreshNotifications(currentUser);
+     await refreshListings();
    });
 
-   return ()=>listener.subscription.unsubscribe();
+   return ()=>{
+     alive = false;
+     listener?.subscription?.unsubscribe?.();
+   };
  },[]);
 
- useEffect(()=>{refreshListings()},[showAdmin,isAdmin]);
+ useEffect(()=>{refreshListings()},[showAdmin,isAdmin,query,category,location,minPrice,maxPrice,sort]);
 
  const approved=listings.filter(x=>x.status==='approved');
  const pending=listings.filter(x=>x.status==='pending');
@@ -279,7 +334,15 @@ export default function HomePage(){
    />
    <section className="mx-auto max-w-7xl px-4 py-8"><div className="mb-5"><h2 className="text-2xl font-black">Son ilanlar</h2><p className="mt-1 text-sm text-slate-500">{loadingListings?'İlanlar yükleniyor...':`${filtered.length} ilan gösteriliyor`}</p></div><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>)}</div></section>
   </main>
-  {showAuth&&<AuthModal onClose={async()=>{setShowAuth(false); const {data}=await supabase.auth.getUser(); setUser(data.user ?? null); await refreshProfile(data.user ?? null)}}/>}
+  {showAuth&&<AuthModal onClose={async()=>{
+    setShowAuth(false);
+    const {data}=await supabase.auth.getSession();
+    const currentUser = data?.session?.user ?? null;
+    setUser(currentUser);
+    await refreshProfile(currentUser);
+    await refreshNotifications(currentUser);
+    await refreshListings();
+  }}/>}
   {showCreate&&<ListingForm onClose={()=>setShowCreate(false)} onCreate={handleCreate}/>}  
   {showAdmin&&isAdmin&&<AdminPanel listings={listings} onApprove={approve} onReject={reject} onDelete={del} onFeature={feature} onClose={()=>setShowAdmin(false)}/>}  
   {showPricing&&<PricingModal onClose={()=>setShowPricing(false)}/>}  
