@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, RefreshCw, Trash2, Pencil, Crown } from 'lucide-react';
+import { X, RefreshCw, Trash2, Pencil, Crown, MapPin } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getMyListings, deleteMyListing } from '@/lib/myListings';
-import { normalizeListing } from '@/lib/listings';
-import ListingCard from '@/components/ListingCard';
 import EditListingModal from '@/components/EditListingModal';
 
 function statusLabel(status) {
@@ -22,16 +20,41 @@ function statusClass(status) {
   return 'bg-slate-50 text-slate-700 ring-slate-200';
 }
 
+function getListingImage(item) {
+  if (item?.image_url) return item.image_url;
+
+  if (Array.isArray(item?.listing_images) && item.listing_images.length > 0) {
+    return item.listing_images[0]?.image_url || '';
+  }
+
+  return '';
+}
+
+function formatPrice(item) {
+  if (item?.price === null || item?.price === undefined || item?.price === '') {
+    return 'Görüşülür';
+  }
+
+  const amount = Number(item.price);
+
+  if (Number.isNaN(amount)) {
+    return 'Görüşülür';
+  }
+
+  return `${amount.toLocaleString('fr-FR')} ${item.currency || 'XPF'}`;
+}
+
 export default function MyListingsModal({ user, onClose }) {
   const mountedRef = useRef(false);
 
+  const [currentUser, setCurrentUser] = useState(user || null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [payingId, setPayingId] = useState(null);
   const [errorText, setErrorText] = useState('');
 
-  async function getCurrentUser() {
+  async function resolveUser() {
     if (user?.id) return user;
 
     try {
@@ -41,41 +64,42 @@ export default function MyListingsModal({ user, onClose }) {
         return data.session.user;
       }
 
-      const userResult = await supabase.auth.getUser();
-      return userResult?.data?.user || null;
+      const result = await supabase.auth.getUser();
+      return result?.data?.user || null;
     } catch (error) {
-      console.error('auth resolve error:', error);
+      console.error('resolveUser error:', error);
       return null;
     }
   }
 
   async function loadListings() {
+    setLoading(true);
+    setErrorText('');
+
     try {
-      setLoading(true);
-      setErrorText('');
-
-      const currentUser = await getCurrentUser();
-
-      if (!currentUser?.id) {
-        setItems([]);
-        setErrorText('Oturum bulunamadı. Sayfayı yenileyip tekrar giriş yap.');
-        return;
-      }
-
-      const rows = await getMyListings(currentUser.id);
+      const activeUser = await resolveUser();
 
       if (!mountedRef.current) return;
 
-      setItems((rows || []).map(normalizeListing));
+      setCurrentUser(activeUser || null);
+
+      if (!activeUser?.id) {
+        setItems([]);
+        setErrorText('Oturum bulunamadı. Çıkış yapıp tekrar giriş yap.');
+        return;
+      }
+
+      const rows = await getMyListings();
+      if (!mountedRef.current) return;
+
+      setItems(Array.isArray(rows) ? rows : []);
     } catch (error) {
-      console.error('loadListings error:', error);
+      console.error('MyListingsModal loadListings error:', error);
 
       if (!mountedRef.current) return;
 
       setItems([]);
-      setErrorText(
-        error?.message || 'İlanlar yüklenirken bir hata oluştu.'
-      );
+      setErrorText(error?.message || 'İlanların yüklenemedi.');
     } finally {
       if (mountedRef.current) {
         setLoading(false);
@@ -85,37 +109,30 @@ export default function MyListingsModal({ user, onClose }) {
 
   useEffect(() => {
     mountedRef.current = true;
-
-    const timer = setTimeout(() => {
-      loadListings();
-    }, 150);
+    loadListings();
 
     return () => {
       mountedRef.current = false;
-      clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleDelete(id) {
     const ok = confirm('Bu ilanı silmek istediğine emin misin?');
-
     if (!ok) return;
 
     try {
       await deleteMyListing(id);
-
-      setItems((current) =>
-        current.filter((item) => item.id !== id)
-      );
+      setItems((current) => current.filter((item) => item.id !== id));
     } catch (error) {
       alert(error.message || 'İlan silinemedi.');
     }
   }
 
   async function handlePremium(item) {
-    const currentUser = await getCurrentUser();
+    const activeUser = currentUser || user;
 
-    if (!currentUser?.id) {
+    if (!activeUser?.id) {
       alert('Premium satın almak için giriş yapmalısın.');
       return;
     }
@@ -125,12 +142,10 @@ export default function MyListingsModal({ user, onClose }) {
 
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           listingId: item.id,
-          userId: currentUser.id,
+          userId: activeUser.id,
           planId: 'premium_7',
         }),
       });
@@ -172,10 +187,7 @@ export default function MyListingsModal({ user, onClose }) {
               </span>
             </button>
 
-            <button
-              onClick={onClose}
-              className="rounded-full p-2 hover:bg-slate-100"
-            >
+            <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
               <X />
             </button>
           </div>
@@ -201,59 +213,107 @@ export default function MyListingsModal({ user, onClose }) {
 
         {!loading && !errorText && items.length > 0 && (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => (
-              <div key={item.id} className="relative rounded-3xl bg-white">
-                <ListingCard listing={item} />
+            {items.map((item) => {
+              const image = getListingImage(item);
+              const isPremium = Boolean(item.is_featured || item.is_premium);
 
+              return (
                 <div
-                  className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-black ring-1 backdrop-blur-sm ${statusClass(item.status)}`}
+                  key={item.id}
+                  className={`overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ${
+                    isPremium ? 'ring-amber-300' : 'ring-slate-200'
+                  }`}
                 >
-                  {statusLabel(item.status)}
-                </div>
+                  <div className="relative h-48 bg-slate-100">
+                    {image ? (
+                      <img
+                        src={image}
+                        alt={item.title || 'İlan görseli'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                        Görsel yok
+                      </div>
+                    )}
 
-                <div className="absolute bottom-4 right-4 flex flex-wrap justify-end gap-2">
-                  {item.status === 'approved' && !item.is_featured && (
-                    <button
-                      onClick={() => handlePremium(item)}
-                      disabled={payingId === item.id}
-                      className="rounded-2xl bg-amber-500 px-3 py-2 text-xs font-black text-white shadow-sm ring-1 ring-amber-300 disabled:opacity-60"
+                    <div
+                      className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-black ring-1 backdrop-blur-sm ${statusClass(
+                        item.status
+                      )}`}
                     >
-                      <span className="inline-flex items-center gap-1">
-                        <Crown size={13} />
-                        {payingId === item.id
-                          ? 'Yönlendiriliyor...'
-                          : 'Premium Yap'}
-                      </span>
-                    </button>
-                  )}
+                      {statusLabel(item.status)}
+                    </div>
 
-                  <button
-                    onClick={() => setEditing(item)}
-                    className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm ring-1 ring-slate-200"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      <Pencil size={13} />
-                      Düzenle
-                    </span>
-                  </button>
+                    {isPremium && (
+                      <div className="absolute right-3 top-3 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-white shadow-sm">
+                        Öne çıkan
+                      </div>
+                    )}
+                  </div>
 
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-red-600 shadow-sm ring-1 ring-red-100"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      <Trash2 size={13} />
-                      Sil
-                    </span>
-                  </button>
+                  <div className="p-4">
+                    <p className="text-xs font-bold uppercase text-slate-500">
+                      {item.category || 'Kategori'}
+                    </p>
+
+                    <h3 className="mt-2 line-clamp-2 text-lg font-black text-slate-950">
+                      {item.title || 'Başlıksız ilan'}
+                    </h3>
+
+                    <p className="mt-2 text-xl font-black text-slate-950">
+                      {formatPrice(item)}
+                    </p>
+
+                    <p className="mt-3 flex items-center gap-1 text-sm text-slate-500">
+                      <MapPin size={15} />
+                      {item.location || 'Konum yok'}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {item.status === 'approved' && !isPremium && (
+                        <button
+                          onClick={() => handlePremium(item)}
+                          disabled={payingId === item.id}
+                          className="rounded-2xl bg-amber-500 px-3 py-2 text-xs font-black text-white shadow-sm ring-1 ring-amber-300 disabled:opacity-60"
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            <Crown size={13} />
+                            {payingId === item.id ? 'Yönlendiriliyor...' : 'Premium Yap'}
+                          </span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setEditing(item)}
+                        className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-sm ring-1 ring-slate-200"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Pencil size={13} />
+                          Düzenle
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded-2xl bg-white px-3 py-2 text-xs font-bold text-red-600 shadow-sm ring-1 ring-red-100"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Trash2 size={13} />
+                          Sil
+                        </span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {editing && (
           <EditListingModal
+            user={currentUser || user}
             listing={editing}
             onClose={() => setEditing(null)}
             onUpdated={() => {
