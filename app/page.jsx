@@ -16,7 +16,6 @@ import FavoritesModal from '@/components/FavoritesModal';
 import NotificationsModal from '@/components/NotificationsModal';
 import SearchFilters from '@/components/SearchFilters';
 import { getOrCreateConversation } from '@/lib/messages';
-import { searchListings } from '@/lib/search';
 import { demoListings, formatXpf } from '@/lib/demoData';
 import { supabase } from '@/lib/supabase';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
@@ -96,18 +95,12 @@ export default function HomePage(){
    try{
      const data = showAdmin && isAdmin
        ? await getAdminListings()
-       : await searchListings({
-           query,
-           category,
-           location,
-           minPrice,
-           maxPrice,
-           sort,
-         });
-     setListings(data.map(normalizeListing));
+       : await getApprovedListings();
+
+     setListings((data || []).map(normalizeListing));
    }catch(error){
-     console.error(error);
-     setListings(demoListings);
+     console.error('refreshListings error:', error);
+     setListings([]);
    }finally{
      setLoadingListings(false);
    }
@@ -175,7 +168,7 @@ export default function HomePage(){
    };
  },[]);
 
- useEffect(()=>{refreshListings()},[showAdmin,isAdmin,query,category,location,minPrice,maxPrice,sort]);
+ useEffect(()=>{refreshListings()},[showAdmin,isAdmin]);
 
  const approved=listings.filter(x=>x.status==='approved');
  const pending=listings.filter(x=>x.status==='pending');
@@ -187,7 +180,61 @@ export default function HomePage(){
    return {totalViews,featured,estimatedRevenue:featured*1500};
  },[approved]);
 
- const filtered=useMemo(()=>approved,[approved]);
+ const filtered=useMemo(()=>{
+   let result = [...approved];
+
+   const normalizedQuery = query.trim().toLowerCase();
+
+   if(normalizedQuery){
+     result = result.filter((item)=>{
+       const haystack = [
+         item.title,
+         item.description,
+         item.category,
+         item.location,
+         item.seller,
+       ].join(' ').toLowerCase();
+
+       return haystack.includes(normalizedQuery);
+     });
+   }
+
+   if(category !== 'Tümü'){
+     result = result.filter((item)=>item.category === category);
+   }
+
+   if(location !== 'Tümü'){
+     result = result.filter((item)=>item.location === location);
+   }
+
+   if(minPrice){
+     const min = Number(minPrice);
+     if(!Number.isNaN(min)){
+       result = result.filter((item)=>Number(item.price || 0) >= min);
+     }
+   }
+
+   if(maxPrice){
+     const max = Number(maxPrice);
+     if(!Number.isNaN(max)){
+       result = result.filter((item)=>Number(item.price || 0) <= max);
+     }
+   }
+
+   if(sort === 'price_asc'){
+     result.sort((a,b)=>Number(a.price || 0)-Number(b.price || 0));
+   }else if(sort === 'price_desc'){
+     result.sort((a,b)=>Number(b.price || 0)-Number(a.price || 0));
+   }else if(sort === 'popular'){
+     result.sort((a,b)=>Number(b.views || 0)-Number(a.views || 0));
+   }else{
+     result.sort((a,b)=>new Date(b.created_at || 0)-new Date(a.created_at || 0));
+   }
+
+   result.sort((a,b)=>Number(b.isFeatured)-Number(a.isFeatured));
+
+   return result;
+ },[approved,query,category,location,minPrice,maxPrice,sort]);
 
  async function handleCreate(payload){
    if(!user){
@@ -329,7 +376,6 @@ export default function HomePage(){
       setMinPrice('');
       setMaxPrice('');
       setSort('newest');
-      setTimeout(()=>refreshListings(),0);
     }}
    />
    <section className="mx-auto max-w-7xl px-4 py-8"><div className="mb-5"><h2 className="text-2xl font-black">Son ilanlar</h2><p className="mt-1 text-sm text-slate-500">{loadingListings?'İlanlar yükleniyor...':`${filtered.length} ilan gösteriliyor`}</p></div><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>)}</div></section>
