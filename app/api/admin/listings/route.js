@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const runtime = 'nodejs';
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
 );
 
 const listingSelect = '*, listing_images(image_url, sort_order)';
@@ -18,10 +26,7 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(
@@ -29,13 +34,13 @@ export async function GET() {
       {
         status: 200,
         headers: {
-          'Cache-Control': 'no-store',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         },
       }
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Server error' },
+      { error: error.message || 'Admin ilanları alınamadı' },
       { status: 500 }
     );
   }
