@@ -1,19 +1,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { X, MessageCircle } from 'lucide-react';
 import { getMyConversations } from '@/lib/messages';
+
+
+  async function getCurrentUser() {
+    if (user?.id) return user;
+
+    try {
+      const { data } = await supabase.auth.getSession();
+
+      if (data?.session?.user) {
+        return data.session.user;
+      }
+
+      const userResult = await supabase.auth.getUser();
+      return userResult?.data?.user || null;
+    } catch (error) {
+      console.error('auth resolve error:', error);
+      return null;
+    }
+  }
 
 export default function MessagesModal({ user, onClose, onOpenConversation }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState('');
 
   useEffect(() => {
     async function load() {
       if (!user?.id) return;
       setLoading(true);
       try {
-        const data = await getMyConversations(user.id);
+        const data = await getMyConversations(currentUser.id);
         setConversations(data);
       } catch (error) {
         alert(error.message || 'Mesajlar yüklenemedi.');
@@ -23,7 +44,7 @@ export default function MessagesModal({ user, onClose, onOpenConversation }) {
     }
 
     load();
-  }, [user?.id]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
@@ -39,6 +60,8 @@ export default function MessagesModal({ user, onClose, onOpenConversation }) {
             <X />
           </button>
         </div>
+
+        {errorText && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-600 ring-1 ring-red-200 mb-4">{errorText}</p>}
 
         {loading && <p className="text-sm text-slate-500">Konuşmalar yükleniyor...</p>}
 

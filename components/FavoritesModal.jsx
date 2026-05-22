@@ -1,21 +1,49 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { X, Heart } from 'lucide-react';
 import { getFavoriteListings, removeFavorite } from '@/lib/favorites';
 import { normalizeListing } from '@/lib/listings';
 import ListingCard from '@/components/ListingCard';
 
+
+  async function getCurrentUser() {
+    if (user?.id) return user;
+
+    try {
+      const { data } = await supabase.auth.getSession();
+
+      if (data?.session?.user) {
+        return data.session.user;
+      }
+
+      const userResult = await supabase.auth.getUser();
+      return userResult?.data?.user || null;
+    } catch (error) {
+      console.error('auth resolve error:', error);
+      return null;
+    }
+  }
+
 export default function FavoritesModal({ user, onClose, onOpenListing }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState('');
 
   async function loadFavorites() {
-    if (!user?.id) return;
-    setLoading(true);
+    const currentUser = await getCurrentUser();
+
+      if (!currentUser?.id) {
+        setLoading(false);
+        setErrorText('Oturum bulunamadı. Lütfen tekrar giriş yap.');
+        return;
+      }
+
+      setLoading(true);
 
     try {
-      const rows = await getFavoriteListings(user.id);
+      const rows = await getFavoriteListings(currentUser.id);
       setItems(rows.map(normalizeListing));
     } catch (error) {
       alert(error.message || 'Favoriler yüklenemedi.');
@@ -26,11 +54,11 @@ export default function FavoritesModal({ user, onClose, onOpenListing }) {
 
   useEffect(() => {
     loadFavorites();
-  }, [user?.id]);
+  }, []);
 
   async function handleRemove(listingId) {
     try {
-      await removeFavorite(user.id, listingId);
+      await removeFavorite(currentUser.id, listingId);
       setItems((current) => current.filter((item) => item.id !== listingId));
     } catch (error) {
       alert(error.message || 'Favoriden kaldırılamadı.');
@@ -55,6 +83,8 @@ export default function FavoritesModal({ user, onClose, onOpenListing }) {
             <X />
           </button>
         </div>
+
+        {errorText && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-600 ring-1 ring-red-200 mb-4">{errorText}</p>}
 
         {loading && <p className="text-sm text-slate-500">Favoriler yükleniyor...</p>}
 

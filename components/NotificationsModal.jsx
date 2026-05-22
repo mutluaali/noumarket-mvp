@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { X, Bell, CheckCheck, Trash2 } from 'lucide-react';
 import {
   getNotifications,
@@ -24,16 +25,43 @@ function labelForType(type) {
   }
 }
 
+
+  async function getCurrentUser() {
+    if (user?.id) return user;
+
+    try {
+      const { data } = await supabase.auth.getSession();
+
+      if (data?.session?.user) {
+        return data.session.user;
+      }
+
+      const userResult = await supabase.auth.getUser();
+      return userResult?.data?.user || null;
+    } catch (error) {
+      console.error('auth resolve error:', error);
+      return null;
+    }
+  }
+
 export default function NotificationsModal({ user, onClose }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorText, setErrorText] = useState('');
 
   async function loadNotifications() {
-    if (!user?.id) return;
-    setLoading(true);
+    const currentUser = await getCurrentUser();
+
+      if (!currentUser?.id) {
+        setLoading(false);
+        setErrorText('Oturum bulunamadı. Lütfen tekrar giriş yap.');
+        return;
+      }
+
+      setLoading(true);
 
     try {
-      const rows = await getNotifications(user.id);
+      const rows = await getNotifications(currentUser.id);
       setItems(rows);
     } catch (error) {
       alert(error.message || 'Bildirimler yüklenemedi.');
@@ -44,7 +72,7 @@ export default function NotificationsModal({ user, onClose }) {
 
   useEffect(() => {
     loadNotifications();
-  }, [user?.id]);
+  }, []);
 
   async function handleMarkRead(id) {
     try {
@@ -59,7 +87,7 @@ export default function NotificationsModal({ user, onClose }) {
 
   async function handleMarkAllRead() {
     try {
-      await markAllNotificationsRead(user.id);
+      await markAllNotificationsRead(currentUser.id);
       setItems((current) => current.map((item) => ({ ...item, is_read: true })));
     } catch (error) {
       alert(error.message || 'Bildirimler güncellenemedi.');
@@ -102,6 +130,8 @@ export default function NotificationsModal({ user, onClose }) {
             <CheckCheck size={16} /> Tümünü okundu yap
           </button>
         </div>
+
+        {errorText && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-600 ring-1 ring-red-200 mb-4">{errorText}</p>}
 
         {loading && <p className="text-sm text-slate-500">Bildirimler yükleniyor...</p>}
 
