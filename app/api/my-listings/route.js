@@ -23,20 +23,41 @@ function makeAdminClient() {
   });
 }
 
-function getBearerToken(request) {
+function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
 
-  if (!authHeader.toLowerCase().startsWith('bearer ')) {
+  if (authHeader.toLowerCase().startsWith('bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+
+  const cookieHeader = request.headers.get('cookie') || '';
+
+  const match = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
+
+  if (!match) {
     return null;
   }
 
-  return authHeader.slice(7).trim();
+  try {
+    const decoded = decodeURIComponent(match[1]);
+    const parsed = JSON.parse(decoded);
+
+    return (
+      parsed?.access_token ||
+      parsed?.currentSession?.access_token ||
+      parsed?.session?.access_token ||
+      null
+    );
+  } catch (error) {
+    console.error('auth cookie parse error:', error);
+    return null;
+  }
 }
 
 export async function GET(request) {
   try {
     const supabaseAdmin = makeAdminClient();
-    const token = getBearerToken(request);
+    const token = getAccessToken(request);
 
     if (!token) {
       return NextResponse.json(
@@ -70,7 +91,7 @@ export async function GET(request) {
     const listingRows = listings || [];
     const listingIds = listingRows.map((item) => item.id).filter(Boolean);
 
-    let imagesByListingId = {};
+    const imagesByListingId = {};
 
     if (listingIds.length > 0) {
       const { data: images, error: imagesError } = await supabaseAdmin
@@ -79,17 +100,19 @@ export async function GET(request) {
         .in('listing_id', listingIds)
         .order('sort_order', { ascending: true });
 
-      if (!imagesError) {
-        for (const image of images || []) {
-          if (!imagesByListingId[image.listing_id]) {
-            imagesByListingId[image.listing_id] = [];
-          }
+      if (imagesError) {
+        console.warn('listing_images query error:', imagesError.message);
+      }
 
-          imagesByListingId[image.listing_id].push({
-            image_url: image.image_url,
-            sort_order: image.sort_order,
-          });
+      for (const image of images || []) {
+        if (!imagesByListingId[image.listing_id]) {
+          imagesByListingId[image.listing_id] = [];
         }
+
+        imagesByListingId[image.listing_id].push({
+          image_url: image.image_url,
+          sort_order: image.sort_order,
+        });
       }
     }
 
