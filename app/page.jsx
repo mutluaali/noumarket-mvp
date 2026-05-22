@@ -187,12 +187,34 @@ export default function HomePage(){
     isAdmin={isAdmin}
     onAuth={()=>setShowAuth(true)}
     onLogout={async()=>{
-      await supabase.auth.signOut();
+      try {
+        await Promise.race([
+          supabase.auth.signOut({ scope: 'local' }),
+          new Promise((resolve) => setTimeout(resolve, 2500)),
+        ]);
+      } catch (error) {
+        console.error('signOut error:', error);
+      }
+
+      try {
+        Object.keys(localStorage)
+          .filter((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
+          .forEach((key) => localStorage.removeItem(key));
+      } catch (error) {
+        console.error('local auth cleanup error:', error);
+      }
+
       setUser(null);
       setProfile(null);
       setIsAdmin(false);
       setShowAdmin(false);
+      setShowMyListings(false);
+      setShowMessages(false);
+      setShowFavorites(false);
+      setShowNotifications(false);
       setNotificationCount(0);
+
+      window.location.reload();
     }}
     onCreate={()=>setShowCreate(true)}
     onPricing={()=>setShowPricing(true)}
