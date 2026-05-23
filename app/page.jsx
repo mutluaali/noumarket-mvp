@@ -44,6 +44,7 @@ import { demoListings, formatXpf } from '@/lib/demoData';
 import { supabase } from '@/lib/supabase';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
+import { trackEvent } from '@/lib/analytics';
 
 export default function HomePage(){
  const router = useRouter();
@@ -118,6 +119,11 @@ export default function HomePage(){
      return () => clearTimeout(timer);
    }
  }, []);
+
+ useEffect(() => {
+   trackEvent('page_view', { source: 'home' }, user?.id || null);
+ }, [user?.id]);
+
  const [activeConversation,setActiveConversation]=useState(null);
 
  async function refreshProfile(currentUser){
@@ -366,6 +372,7 @@ export default function HomePage(){
    }
    try{
      await createListing({...payload,user_id:user.id});
+     await trackEvent('listing_create', { category: payload.category, location: payload.location, price: payload.price }, user.id);
      setShowCreate(false);
      alert('İlan kaydedildi. Admin onayından sonra yayına çıkacak.');
      await refreshListings();
@@ -408,6 +415,7 @@ export default function HomePage(){
    try{
      const nextValue = await toggleFavorite(user.id, listing.id, isCurrentlyFavorite);
      if(nextValue) markActivationEvent('favorite');
+     await trackEvent(nextValue ? 'favorite_add' : 'favorite_remove', { listing_id: listing.id, category: listing.category, price: listing.price }, user.id);
      setFavoriteIds((current)=>{
        if(nextValue) return Array.from(new Set([...current, listing.id]));
        return current.filter((id)=>id!==listing.id);
@@ -436,6 +444,7 @@ export default function HomePage(){
        sellerId: listing.user_id,
      });
      markActivationEvent('message');
+     await trackEvent('message_start', { listing_id: listing.id, seller_id: listing.user_id }, user.id);
      setActiveConversation(conversation);
    }catch(error){
      alert(error.message || 'Sohbet başlatılamadı.');
@@ -446,7 +455,7 @@ export default function HomePage(){
   <Header
     user={user}
     isAdmin={isAdmin}
-    onAuth={()=>setShowAuth(true)}
+    onAuth={()=>{trackEvent('auth_open',{},user?.id); setShowAuth(true)}}
     onLogout={async()=>{
       try {
         await Promise.race([
@@ -481,13 +490,14 @@ export default function HomePage(){
 
       window.location.reload();
     }}
-    onCreate={()=>setShowCreate(true)}
-    onPricing={()=>setShowPricing(true)}
+    onCreate={()=>{trackEvent('listing_create_open',{},user?.id); setShowCreate(true)}}
+    onPricing={()=>{trackEvent('pricing_open',{},user?.id); setShowPricing(true)}}
     onAdmin={()=>{
       if(!isAdmin){
         alert('Admin yetkin yok.');
         return;
       }
+      trackEvent('admin_open',{},user?.id);
       setShowAdmin(true);
     }}
     onMyListings={()=>setShowMyListings(true)}
@@ -511,9 +521,9 @@ export default function HomePage(){
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
          <div className="flex items-center gap-3 rounded-3xl bg-slate-100 px-4 py-4">
           <Search className="text-slate-500" size={21}/>
-          <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter') refreshListings()}} placeholder="Hilux, kiralık ev, iPhone, tekne motoru..." className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"/>
+          <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){trackEvent('search',{query,category,location,minPrice,maxPrice,sort},user?.id); refreshListings();}}} placeholder="Hilux, kiralık ev, iPhone, tekne motoru..." className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"/>
          </div>
-         <button onClick={refreshListings} className="rounded-3xl bg-slate-950 px-7 py-4 text-sm font-black text-white shadow-lg hover:bg-slate-800">Ara</button>
+         <button onClick={()=>{trackEvent('search',{query,category,location,minPrice,maxPrice,sort},user?.id); refreshListings();}} className="rounded-3xl bg-slate-950 px-7 py-4 text-sm font-black text-white shadow-lg hover:bg-slate-800">Ara</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 px-1 pb-1">
          {['Araç','Emlak','Elektronik','Denizcilik'].map((quick)=>(
@@ -588,7 +598,7 @@ export default function HomePage(){
     sort={sort}
     setSort={setSort}
     locations={locations}
-    onSearch={refreshListings}
+    onSearch={()=>{trackEvent('search',{query,category,location,minPrice,maxPrice,sort,source:'filters'},user?.id); refreshListings();}}
     onClear={clearFilters}
     onSaveSearch={handleSaveSearch}
     compact={!mobileFiltersOpen}
@@ -619,11 +629,11 @@ export default function HomePage(){
      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[0,1,2,3,4,5].map((x)=><ListingSkeleton key={x}/>)}</div>
     ) : filtered.length ? (
      viewMode === 'list' ? (
-      <div className="grid gap-4">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>router.push(`/ilan/${item.id}`)} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
+      <div className="grid gap-4">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
      ) : viewMode === 'classic' ? (
-      <div className="grid gap-4 lg:grid-cols-2">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>router.push(`/ilan/${item.id}`)} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
+      <div className="grid gap-4 lg:grid-cols-2">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
      ) : (
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>router.push(`/ilan/${item.id}`)} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
      )
     ) : (
      <EmptyState onClear={clearFilters} onCreate={()=>setShowCreate(true)} />

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import SeedMarketplacePanel from '@/components/SeedMarketplacePanel';
 import GrowthAnalyticsPanel from '@/components/GrowthAnalyticsPanel';
 import ModerationQualityPanel from '@/components/ModerationQualityPanel';
+import ProductAnalyticsPanel from '@/components/ProductAnalyticsPanel';
 
 function money(amount, currency = 'XPF') {
   return `${Number(amount || 0).toLocaleString('fr-FR')} ${currency}`;
@@ -80,6 +81,7 @@ export default function AdminPanel({ listings, onApprove, onReject, onDelete, on
     ['reports', `Şikayetler (${metrics.openReports || 0})`],
     ['payments', 'Ödemeler'],
     ['analytics', 'Analytics'],
+    ['product', 'Product analytics'],
     ['quality', 'Güvenlik kuyruğu'],
     ['seed', 'Seed içerik'],
   ];
@@ -201,6 +203,10 @@ export default function AdminPanel({ listings, onApprove, onReject, onDelete, on
 
         {!loading && tab === 'analytics' && (
           <GrowthAnalyticsPanel dashboard={dashboard} />
+        )}
+
+        {!loading && tab === 'product' && (
+          <ProductAnalyticsPanel dashboard={dashboard} />
         )}
 
         {!loading && tab === 'quality' && (
