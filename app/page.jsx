@@ -25,6 +25,7 @@ import DopingShowcase from '@/components/DopingShowcase';
 import CompareBar from '@/components/CompareBar';
 import CompareModal from '@/components/CompareModal';
 import AdvancedCategoryFilters from '@/components/AdvancedCategoryFilters';
+import SmartFeed from '@/components/SmartFeed';
 import CategoryShowcase from '@/components/CategoryShowcase';
 import TrustStrip from '@/components/TrustStrip';
 import BottomNav from '@/components/BottomNav';
@@ -572,6 +573,16 @@ export default function HomePage(){
     favoriteIds={favoriteIds}
     onFavorite={handleFavorite}
     onOpen={(item)=>router.push(`/ilan/${item.id}`)}
+   />
+
+   <SmartFeed
+    listings={approved}
+    context={{ query, category, location }}
+    favoriteIds={favoriteIds}
+    onFavorite={handleFavorite}
+    onOpen={(item)=>{trackEvent('smart_feed_click',{listing_id:item.id,category:item.category,score:item.smart_score},user?.id); router.push(`/ilan/${item.id}`)}}
+    onCompare={toggleCompare}
+    compareIds={compareIds}
    />
 
    <DopingShowcase onPricing={()=>setShowPricing(true)} />
