@@ -1,6 +1,7 @@
 'use client';
 
 import { Camera, Crown, Eye, Heart, MapPin, Clock3, Square, CheckSquare } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
 
 function getAgeLabel(item) {
   const createdAt = item?.created_at ? new Date(item.created_at).getTime() : 0;
@@ -22,7 +23,7 @@ export default function ListingListRow({ item, onClick, onFavorite, isFavorite, 
       className="group grid cursor-pointer gap-4 rounded-[1.7rem] bg-white p-3 shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg md:grid-cols-[190px_1fr_auto]"
     >
       <div className="relative h-44 overflow-hidden rounded-[1.35rem] bg-slate-100 md:h-36">
-        <img src={item.image} alt={item.title} className="h-full w-full object-cover transition group-hover:scale-105" />
+        <OptimizedImage src={item.image} alt={item.title} className="object-cover transition group-hover:scale-105" sizes="(max-width: 768px) 100vw, 190px" />
         <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-slate-950/70 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
           <Camera size={13} /> {imageCount(item)}
         </span>
