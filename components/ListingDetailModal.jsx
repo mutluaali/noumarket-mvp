@@ -1,8 +1,9 @@
 'use client';
 
-import { X, MapPin, User, Phone, Mail, MessageCircle, AlertTriangle, ChevronLeft, ChevronRight, Eye, CalendarDays, Camera, Flag } from 'lucide-react';
+import { X, MapPin, User, Phone, Mail, MessageCircle, AlertTriangle, ChevronLeft, ChevronRight, Eye, CalendarDays, Camera, Flag, HandCoins } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ReportListingModal from '@/components/ReportListingModal';
+import OfferModal from '@/components/OfferModal';
 import SellerTrustBadge from '@/components/SellerTrustBadge';
 
 function normalizePhone(phone) {
@@ -22,6 +23,7 @@ export default function ListingDetailModal({ selected, user, onClose, onStartCha
   const images = useMemo(() => selected.images?.length ? selected.images : [selected.image], [selected]);
   const [index, setIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const [offerOpen, setOfferOpen] = useState(false);
   const currentImage = images[index];
   const phone = selected.phone || selected.seller_phone;
   const email = selected.email || selected.seller_email;
@@ -137,6 +139,15 @@ export default function ListingDetailModal({ selected, user, onClose, onStartCha
               <MessageCircle size={17} /> Site içi mesaj gönder
             </button>
 
+
+            <button
+              onClick={() => setOfferOpen(true)}
+              disabled={!user || selected.user_id === user?.id}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800 disabled:opacity-50"
+            >
+              <HandCoins size={17} /> Teklif gönder
+            </button>
+
             {whatsappPhone && (
               <a
                 href={`https://wa.me/${whatsappPhone}`}
@@ -172,6 +183,9 @@ export default function ListingDetailModal({ selected, user, onClose, onStartCha
       </div>
       {reportOpen && (
         <ReportListingModal user={user} listing={selected} onClose={() => setReportOpen(false)} />
+      )}
+      {offerOpen && (
+        <OfferModal user={user} listing={selected} onClose={() => setOfferOpen(false)} />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import ChatModal from '@/components/ChatModal';
 import MessagesModal from '@/components/MessagesModal';
 import FavoritesModal from '@/components/FavoritesModal';
 import NotificationsModal from '@/components/NotificationsModal';
+import OffersModal from '@/components/OffersModal';
 import SavedSearchesModal from '@/components/SavedSearchesModal';
 import ProfileModal from '@/components/ProfileModal';
 import SearchFilters from '@/components/SearchFilters';
@@ -72,6 +73,7 @@ export default function HomePage(){
  const [showMessages,setShowMessages]=useState(false);
  const [showFavorites,setShowFavorites]=useState(false);
  const [showNotifications,setShowNotifications]=useState(false);
+ const [showOffers,setShowOffers]=useState(false);
  const [showSavedSearches,setShowSavedSearches]=useState(false);
  const [showProfile,setShowProfile]=useState(false);
  const [showFeedback,setShowFeedback]=useState(false);
@@ -652,6 +654,14 @@ export default function HomePage(){
    </section>
    <DeployChecklist />
   </main>
+  {user&&(
+    <button
+      onClick={()=>setShowOffers(true)}
+      className="fixed bottom-40 right-4 z-40 hidden rounded-full bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-2xl ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-emerald-800 lg:block"
+    >
+      Tekliflerim
+    </button>
+  )}
   <button
     onClick={()=>setShowFeedback(true)}
     className="fixed bottom-24 right-4 z-40 hidden rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-slate-800 lg:block"
@@ -735,6 +745,9 @@ export default function HomePage(){
         await refreshNotifications();
       }}
     />
+  )}
+  {showOffers&&user&&(
+    <OffersModal user={user} onClose={()=>setShowOffers(false)} />
   )}
   {showSavedSearches&&user&&(
     <SavedSearchesModal
