@@ -13,7 +13,7 @@ const supabase = createClient(
   }
 );
 
-const listingSelect = '*, listing_images(image_url, sort_order)';
+const listingSelect = 'id,user_id,title,description,category,subcategory,condition,price,currency,location,seller_name,seller_phone,seller_email,image_url,status,is_featured,featured_until,view_count,created_at,metadata,listing_images(image_url, sort_order)';
 
 function parseNumber(value) {
   if (value === null || value === undefined || value === '') return null;
@@ -73,7 +73,7 @@ export async function GET(request) {
     if (minPrice !== null) query = query.gte('price', minPrice);
     if (maxPrice !== null) query = query.lte('price', maxPrice);
 
-    const { data, error } = await applySort(query, sort).limit(120);
+    const { data, error } = await applySort(query, sort).limit(60);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

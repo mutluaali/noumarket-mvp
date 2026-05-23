@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { AlertTriangle, ArrowLeft, CalendarDays, Camera, Crown, Eye, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Store, User } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CalendarDays, Camera, CheckCircle2, Crown, Eye, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Store, Tag, User } from 'lucide-react';
 import ListingViewTracker from '@/components/ListingViewTracker';
 import SimilarListings from '@/components/SimilarListings';
 import SellerTrustBadge from '@/components/SellerTrustBadge';
@@ -62,6 +62,10 @@ function premiumIsActive(row) {
   if (!row?.is_featured) return false;
   if (!row?.featured_until) return true;
   return new Date(row.featured_until).getTime() > Date.now();
+}
+
+function getPlainMetadata(row) {
+  return Object.entries(row?.metadata || {}).filter(([, value]) => value && typeof value !== 'object').slice(0, 9);
 }
 
 
@@ -151,28 +155,48 @@ export default async function ListingPage({ params }) {
   const whatsappPhone = normalizePhone(phone);
   const isPremium = premiumIsActive(listing);
   const similarListings = await getSimilarListings(listing);
+  const metadataEntries = getPlainMetadata(listing);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <ListingViewTracker listingId={listing.id} />
       <div className="mx-auto max-w-7xl px-4 py-5 md:py-8">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100">
-          <ArrowLeft size={17} /> Ana sayfaya dön
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100">
+            <ArrowLeft size={17} /> Ana sayfaya dön
+          </Link>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+            <Link href="/" className="hover:text-slate-900">NouMarket</Link>
+            <span>/</span>
+            <Link href={`/?category=${encodeURIComponent(listing.category || '')}`} className="hover:text-slate-900">{listing.category || 'Kategori'}</Link>
+            {listing.subcategory && <><span>/</span><span className="text-slate-800">{listing.subcategory}</span></>}
+          </div>
+        </div>
 
         <div className="mt-5 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
           <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200">
-            <div className="relative bg-slate-950">
-              <img src={images[0]} alt={listing.title} className="h-[360px] w-full object-contain md:h-[560px]" />
+            <div className={`grid gap-0 bg-slate-950 ${images.length > 1 ? 'lg:grid-cols-[96px_1fr]' : ''}`}>
+              {images.length > 1 && (
+                <div className="hidden max-h-[560px] gap-2 overflow-y-auto border-r border-white/10 bg-slate-950 p-3 lg:grid">
+                  {images.map((image, index) => (
+                    <a key={`${image}-${index}`} href={image} target="_blank" rel="noreferrer" className="h-16 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/10 hover:ring-white/40">
+                      <img src={image} alt={`${listing.title} fotoğraf ${index + 1}`} className="h-full w-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <div className="relative bg-slate-950">
+              <img src={images[0]} alt={listing.title} className="h-[340px] w-full object-contain md:h-[520px]" />
               <div className="absolute left-4 top-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-700 shadow-sm backdrop-blur">{listing.category}{listing.subcategory ? ` / ${listing.subcategory}` : ''}</span>
                 {isPremium && <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950 shadow-sm"><Crown size={14} /> Premium</span>}
               </div>
               <div className="absolute bottom-4 right-4 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-slate-900 shadow-sm backdrop-blur"><Camera size={14} /> {images.length} fotoğraf</div>
+              </div>
             </div>
 
             {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto border-t border-slate-200 bg-white p-3">
+              <div className="flex gap-2 overflow-x-auto border-t border-slate-200 bg-white p-3 lg:hidden">
                 {images.map((image, index) => (
                   <a key={`${image}-${index}`} href={image} target="_blank" rel="noreferrer" className="h-20 w-28 shrink-0 overflow-hidden rounded-2xl bg-slate-100 ring-1 ring-slate-200 hover:ring-slate-400">
                     <img src={image} alt={`${listing.title} fotoğraf ${index + 1}`} className="h-full w-full object-cover" />
@@ -192,6 +216,18 @@ export default async function ListingPage({ params }) {
                 <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><Eye size={17} /> {listing.view_count || 0} görüntülenme</div>
                 <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><CalendarDays size={17} /> {formatDate(listing.created_at)}</div>
                 <div className="flex items-center gap-2 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><ShieldCheck size={17} /> Admin onaylı</div>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black">Hızlı özet</h2>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">Aktif ilan</span>
+              </div>
+              <div className="grid gap-3 text-sm">
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><span className="flex items-center gap-2 text-slate-500"><Tag size={16}/> Kategori</span><strong>{listing.category || 'Belirtilmedi'}</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><span className="flex items-center gap-2 text-slate-500"><CheckCircle2 size={16}/> Durum</span><strong>{listing.condition || listing.metadata?.condition || 'Belirtilmedi'}</strong></div>
+                <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200"><span className="flex items-center gap-2 text-slate-500"><ShieldCheck size={16}/> Güven</span><strong>Admin onaylı</strong></div>
               </div>
             </section>
 
@@ -239,11 +275,11 @@ export default async function ListingPage({ params }) {
         </div>
 
 
-        {listing.metadata && Object.entries(listing.metadata).filter(([, value]) => value && typeof value !== 'object').length > 0 && (
+        {metadataEntries.length > 0 && (
           <section className="mt-6 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-7">
             <h2 className="text-xl font-black">İlan özellikleri</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(listing.metadata).filter(([, value]) => value && typeof value !== 'object').map(([key, value]) => (
+              {metadataEntries.map(([key, value]) => (
                 <div key={key} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
                   <div className="text-xs font-black uppercase tracking-wide text-slate-400">{key.replaceAll('_', ' ')}</div>
                   <div className="mt-1 font-bold text-slate-800">{String(value)}</div>

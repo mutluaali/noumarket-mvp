@@ -1,12 +1,14 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Flame, Sparkles, TrendingUp } from 'lucide-react';
 import ListingCard from '@/components/ListingCard';
 import { buildSmartFeed, getTrendingListings } from '@/lib/smartFeed';
 
 export default function SmartFeed({ listings = [], context = {}, favoriteIds = [], onFavorite, onOpen, onCompare, compareIds = [] }) {
-  const personalized = buildSmartFeed(listings, { ...context, limit: 6 });
-  const trending = getTrendingListings(listings, 3);
+  const contextKey = `${context.query || ''}|${context.category || ''}|${context.location || ''}`;
+  const personalized = useMemo(() => buildSmartFeed(listings, { ...context, limit: 6 }), [listings, contextKey]);
+  const trending = useMemo(() => getTrendingListings(listings, 3), [listings]);
 
   if (!listings.length) return null;
 

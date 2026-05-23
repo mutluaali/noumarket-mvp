@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ShieldCheck, Eye, Crown, BarChart3, Globe2, Plus, CreditCard, Sparkles } from 'lucide-react';
+import { ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import Header from '@/components/Header';
 import AuthModal from '@/components/AuthModal';
 import ListingCard from '@/components/ListingCard';
@@ -18,17 +18,12 @@ import NotificationsModal from '@/components/NotificationsModal';
 import OffersModal from '@/components/OffersModal';
 import SavedSearchesModal from '@/components/SavedSearchesModal';
 import ProfileModal from '@/components/ProfileModal';
-import SearchFilters from '@/components/SearchFilters';
 import ResultsToolbar from '@/components/ResultsToolbar';
 import ListingListRow from '@/components/ListingListRow';
-import SearchIntentBar from '@/components/SearchIntentBar';
-import DopingShowcase from '@/components/DopingShowcase';
 import CompareBar from '@/components/CompareBar';
 import CompareModal from '@/components/CompareModal';
-import AdvancedCategoryFilters from '@/components/AdvancedCategoryFilters';
-import SmartFeed from '@/components/SmartFeed';
-import CategoryShowcase from '@/components/CategoryShowcase';
 import TrustStrip from '@/components/TrustStrip';
+import MarketplaceDiscovery from '@/components/MarketplaceDiscovery';
 import BottomNav from '@/components/BottomNav';
 import FeedbackModal from '@/components/FeedbackModal';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
@@ -57,6 +52,7 @@ export default function HomePage(){
  const [isAdmin,setIsAdmin]=useState(false);
  const [query,setQuery]=useState('');
  const [category,setCategory]=useState('Tümü');
+ const [subcategory,setSubcategory]=useState('Tümü');
  const [location,setLocation]=useState('Tümü');
  const [minPrice,setMinPrice]=useState('');
  const [maxPrice,setMaxPrice]=useState('');
@@ -82,6 +78,13 @@ export default function HomePage(){
  const [favoriteIds,setFavoriteIds]=useState([]);
  const [compareIds,setCompareIds]=useState([]);
  const [showCompare,setShowCompare]=useState(false);
+ const latestListingsRequest = useRef(0);
+ const mountedRef = useRef(true);
+
+ useEffect(() => {
+   mountedRef.current = true;
+   return () => { mountedRef.current = false; };
+ }, []);
 
  // Eski PWA/service-worker cache'i production'da eski bundle çalıştırıyordu.
  // Bu temizlik bir kez yapılır ve eski JS/cache kilitlerini kırar.
@@ -142,21 +145,29 @@ export default function HomePage(){
    setIsAdmin(userIsAdmin(nextProfile));
  }
 
- async function refreshListings(){
-   setLoadingListings(true);
+ const refreshListings = useCallback(async () => {
+   const requestId = latestListingsRequest.current + 1;
+   latestListingsRequest.current = requestId;
+
+   if (mountedRef.current) setLoadingListings(true);
+
    try{
      const data = showAdmin && isAdmin
        ? await getAdminListings()
        : await getApprovedListings({ query, category, location, minPrice, maxPrice, sort });
 
+     if (!mountedRef.current || requestId !== latestListingsRequest.current) return;
      setListings((data || []).map(normalizeListing));
    }catch(error){
+     if (!mountedRef.current || requestId !== latestListingsRequest.current) return;
      console.warn('refreshListings warning:', error);
      setListings([]);
    }finally{
-     setLoadingListings(false);
+     if (mountedRef.current && requestId === latestListingsRequest.current) {
+       setLoadingListings(false);
+     }
    }
- }
+ }, [showAdmin, isAdmin, query, category, location, minPrice, maxPrice, sort]);
 
  async function refreshFavorites(currentUser = user){
    if(!currentUser?.id){
@@ -173,7 +184,7 @@ export default function HomePage(){
  }
 
  async function refreshNotifications(currentUser = user){
-   if(!currentUser?.id){
+   if(!currentUser?.id || !supabase){
      setNotificationCount(0);
      return;
    }
@@ -220,15 +231,17 @@ export default function HomePage(){
 
    bootAuth();
 
-   const {data:listener}=supabase.auth.onAuthStateChange(async (_event,session)=>{
-     const currentUser = session?.user ?? null;
+   const {data:listener} = supabase
+     ? supabase.auth.onAuthStateChange(async (_event,session)=>{
+         const currentUser = session?.user ?? null;
 
-     setUser(currentUser);
-     await refreshProfile(currentUser);
-     await refreshNotifications(currentUser);
-     await refreshFavorites(currentUser);
-     await refreshListings();
-   });
+         setUser(currentUser);
+         await refreshProfile(currentUser);
+         await refreshNotifications(currentUser);
+         await refreshFavorites(currentUser);
+         await refreshListings();
+       })
+     : { data: null };
 
    return ()=>{
      alive = false;
@@ -236,18 +249,20 @@ export default function HomePage(){
    };
  },[]);
 
- useEffect(()=>{refreshListings()},[showAdmin,isAdmin]);
+ useEffect(()=>{
+   if(showAdmin && isAdmin) refreshListings();
+ }, [showAdmin, isAdmin, refreshListings]);
 
  useEffect(()=>{
    if(!autoSearch) return;
    if(showAdmin && isAdmin) return;
    const timer = setTimeout(()=>refreshListings(), 350);
    return ()=>clearTimeout(timer);
- },[query,category,location,minPrice,maxPrice,sort,autoSearch]);
+ },[query,category,subcategory,location,minPrice,maxPrice,sort,autoSearch,showAdmin,isAdmin,refreshListings]);
 
- const approved=listings.filter(x=>x.status==='approved');
- const pending=listings.filter(x=>x.status==='pending');
- const locations=['Tümü',...Array.from(new Set(approved.map(x=>x.location)))];
+ const approved = useMemo(() => listings.filter((x) => x.status === 'approved'), [listings]);
+ const pending = useMemo(() => listings.filter((x) => x.status === 'pending'), [listings]);
+ const locations = useMemo(() => ['Tümü', ...Array.from(new Set(approved.map((x) => x.location).filter(Boolean)))], [approved]);
 
  const stats=useMemo(()=>{
    const totalViews=approved.reduce((a,x)=>a+(x.views||0),0);
@@ -255,16 +270,10 @@ export default function HomePage(){
    return {totalViews,featured,estimatedRevenue:featured*1500};
  },[approved]);
 
- const categoryCounts=useMemo(()=>{
-   return approved.reduce((acc,item)=>{
-     acc[item.category]=(acc[item.category] || 0) + 1;
-     return acc;
-   },{});
- },[approved]);
-
  function clearFilters(){
    setQuery('');
    setCategory('Tümü');
+   setSubcategory('Tümü');
    setLocation('Tümü');
    setMinPrice('');
    setMaxPrice('');
@@ -279,7 +288,7 @@ export default function HomePage(){
    }
 
    try{
-     await createSavedSearch(user.id, { query, category, location, minPrice, maxPrice, sort });
+     await createSavedSearch(user.id, { query, category, subcategory, location, minPrice, maxPrice, sort });
      alert('Arama kaydedildi. Yeni eşleşmeler için alarm altyapısı hazır.');
      setShowSavedSearches(true);
    }catch(error){
@@ -290,6 +299,7 @@ export default function HomePage(){
  function applySavedSearch(filters){
    setQuery(filters.query || '');
    setCategory(filters.category || 'Tümü');
+   setSubcategory(filters.subcategory || 'Tümü');
    setLocation(filters.location || 'Tümü');
    setMinPrice(filters.minPrice || '');
    setMaxPrice(filters.maxPrice || '');
@@ -300,6 +310,7 @@ export default function HomePage(){
  function applySmartSearchIntent(intent){
    setQuery(intent.query || '');
    setCategory(intent.category || 'Tümü');
+   setSubcategory(intent.subcategory || 'Tümü');
    setLocation(intent.location || 'Tümü');
    setMinPrice(intent.minPrice || '');
    setMaxPrice(intent.maxPrice || '');
@@ -327,6 +338,20 @@ export default function HomePage(){
 
    if(category !== 'Tümü'){
      result = result.filter((item)=>item.category === category);
+   }
+
+   if(subcategory !== 'Tümü'){
+     const normalizedSub = String(subcategory).trim().toLowerCase();
+     result = result.filter((item)=>{
+       const values = [
+         item.subcategory,
+         item.metadata?.brand,
+         item.metadata?.model,
+         item.metadata?.property_type,
+         item.metadata?.marine_type,
+       ].filter(Boolean).map((value)=>String(value).trim().toLowerCase());
+       return values.includes(normalizedSub);
+     });
    }
 
    if(location !== 'Tümü'){
@@ -364,7 +389,7 @@ export default function HomePage(){
    result.sort((a,b)=>Number(b.isFeatured)-Number(a.isFeatured));
 
    return result;
- },[approved,query,category,location,minPrice,maxPrice,sort]);
+ },[approved,query,category,subcategory,location,minPrice,maxPrice,sort]);
 
  async function handleCreate(payload){
    if(!user){
@@ -510,98 +535,38 @@ export default function HomePage(){
     onSavedSearches={()=>setShowSavedSearches(true)}
     onProfile={()=>setShowProfile(true)}
     notificationCount={notificationCount}
+    onSearchFocus={()=>document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' })}
+    searchValue={query}
+    onSearchChange={setQuery}
+    onSearchSubmit={()=>{document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' }); trackEvent('search',{query,category,subcategory,location,minPrice,maxPrice,sort,source:'navbar'},user?.id); refreshListings();}}
   />
   <main>
-   <section id="search" className="relative overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_top_left,#dbeafe,transparent_34%),linear-gradient(135deg,#f8fafc,#eef2ff_48%,#fef3c7)]">
-    <div className="mx-auto max-w-7xl px-4 pb-10 pt-8 md:pb-14 md:pt-14">
-     <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-      <div>
-       <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1 text-sm font-bold text-slate-700 shadow-sm backdrop-blur"><ShieldCheck size={16}/> Admin onaylı yerel ilan pazarı</div>
-       <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 md:text-6xl">Yeni Kaledonya’nın sahibinden.com alternatifi.</h1>
-       <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">Araç, emlak, elektronik, denizcilik, hizmet ve ikinci el ürünleri tek yerde toplayan modern NouMarket deneyimi.</p>
-
-       <div className="mt-7 rounded-[2rem] bg-white/90 p-3 shadow-2xl ring-1 ring-white/70 backdrop-blur">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-         <div className="flex items-center gap-3 rounded-3xl bg-slate-100 px-4 py-4">
-          <Search className="text-slate-500" size={21}/>
-          <input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){trackEvent('search',{query,category,location,minPrice,maxPrice,sort},user?.id); refreshListings();}}} placeholder="Hilux, kiralık ev, iPhone, tekne motoru..." className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"/>
-         </div>
-         <button onClick={()=>{trackEvent('search',{query,category,location,minPrice,maxPrice,sort},user?.id); refreshListings();}} className="rounded-3xl bg-slate-950 px-7 py-4 text-sm font-black text-white shadow-lg hover:bg-slate-800">Ara</button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2 px-1 pb-1">
-         {['Araç','Emlak','Elektronik','Denizcilik'].map((quick)=>(
-          <button key={quick} onClick={()=>setCategory(quick)} className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-900 hover:text-white">{quick}</button>
-         ))}
-        </div>
-       </div>
-
-       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-3xl bg-white/85 p-4 shadow-sm ring-1 ring-white/70 backdrop-blur"><div className="flex items-center gap-2 text-sm font-bold text-slate-500"><Eye size={16}/> Görüntülenme</div><div className="mt-2 text-2xl font-black">{stats.totalViews}</div></div>
-        <div className="rounded-3xl bg-white/85 p-4 shadow-sm ring-1 ring-white/70 backdrop-blur"><div className="flex items-center gap-2 text-sm font-bold text-slate-500"><Crown size={16}/> Premium ilan</div><div className="mt-2 text-2xl font-black">{stats.featured}</div></div>
-        <div className="rounded-3xl bg-white/85 p-4 shadow-sm ring-1 ring-white/70 backdrop-blur"><div className="flex items-center gap-2 text-sm font-bold text-slate-500"><BarChart3 size={16}/> Tahmini gelir</div><div className="mt-2 text-2xl font-black">{formatXpf(stats.estimatedRevenue)}</div></div>
-       </div>
+   <section id="search" className="border-b border-slate-200 bg-white">
+    <div className="mx-auto max-w-7xl px-4 py-7 md:py-9">
+     <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-end">
+      <div className="max-w-3xl">
+       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"><ShieldCheck size={15}/> Güvenli, sade, yerel ilan pazarı</div>
+       <h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Aradığını hızlı bul. İlanını kolay yayınla.</h1>
+       <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Arama artık navbar’da tek merkezde. Kategori ve filtreler aşağıdaki tek panelden birlikte çalışır.</p>
       </div>
-
-      <div className="relative hidden lg:block">
-       <div className="absolute -left-5 -top-5 z-10 rounded-3xl bg-slate-950 px-5 py-4 text-white shadow-2xl">
-        <div className="flex items-center gap-2 text-xs font-bold text-amber-200"><Sparkles size={15}/> Lokal fırsat</div>
-        <div className="mt-1 text-2xl font-black">{approved.length} aktif ilan</div>
-       </div>
-       <div className="overflow-hidden rounded-[2.4rem] bg-white shadow-2xl ring-1 ring-white/80">
-        <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1100&q=80" className="h-[455px] w-full object-cover" alt="New Caledonia landscape"/>
-        <div className="absolute bottom-6 left-6 right-6 rounded-[2rem] bg-white/90 p-5 shadow-xl backdrop-blur">
-         <div className="text-sm font-semibold text-slate-500">Platform özeti</div>
-         <div className="mt-1 text-2xl font-black">{approved.length} aktif ilan</div>
-         <div className="mt-2 text-sm text-slate-600">{pending.length} ilan onay bekliyor · Admin kontrollü güvenli yayın</div>
-        </div>
-       </div>
+      <div className="grid grid-cols-3 gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3 text-center">
+       <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-xl font-black text-slate-950">{approved.length}</div><div className="text-xs font-bold text-slate-500">Aktif ilan</div></div>
+       <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-xl font-black text-slate-950">{stats.featured}</div><div className="text-xs font-bold text-slate-500">Premium</div></div>
+       <button type="button" onClick={()=>setMobileFiltersOpen(true)} className="rounded-2xl bg-white p-3 ring-1 ring-slate-200 md:hidden"><SlidersHorizontal className="mx-auto mb-1" size={20}/><div className="text-xs font-bold text-slate-500">Filtre</div></button>
+       <div className="hidden rounded-2xl bg-white p-3 ring-1 ring-slate-200 md:block"><div className="text-xl font-black text-slate-950">Tek</div><div className="text-xs font-bold text-slate-500">Arama</div></div>
       </div>
      </div>
     </div>
    </section>
 
    <TrustStrip />
-   <SearchIntentBar query={query} setQuery={setQuery} onSearch={refreshListings} onApplyIntent={applySmartSearchIntent} />
-   <ActivationNudges
-    user={user}
-    listingCount={approved.filter((item)=>item.user_id===user?.id).length}
-    onCreate={()=>setShowCreate(true)}
-    onFavorites={()=>user ? setShowFavorites(true) : setShowAuth(true)}
-    onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
-   />
-   <CategoryShowcase activeCategory={category} counts={categoryCounts} onSelect={setCategory} />
-   <RecentlyViewed
+   <MarketplaceDiscovery
     listings={approved}
-    favoriteIds={favoriteIds}
-    onFavorite={handleFavorite}
-    onOpen={(item)=>router.push(`/ilan/${item.id}`)}
-   />
-
-   <SmartFeed
-    listings={approved}
-    context={{ query, category, location }}
-    favoriteIds={favoriteIds}
-    onFavorite={handleFavorite}
-    onOpen={(item)=>{trackEvent('smart_feed_click',{listing_id:item.id,category:item.category,score:item.smart_score},user?.id); router.push(`/ilan/${item.id}`)}}
-    onCompare={toggleCompare}
-    compareIds={compareIds}
-   />
-
-   <DopingShowcase onPricing={()=>setShowPricing(true)} />
-
-   <section className="mx-auto max-w-7xl px-4 py-4">
-    <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
-     <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-sm"><div className="flex items-center gap-2 text-sm font-bold text-slate-300"><Globe2 size={17}/> Gerçek MVP mimarisi</div><h2 className="mt-2 text-2xl font-black">Supabase + Vercel ile canlıya çıkmaya hazır yapı</h2></div>
-     <div className="rounded-[2rem] bg-amber-50 p-6 shadow-sm ring-1 ring-amber-200"><div className="mb-2 flex items-center gap-2 text-sm font-bold text-amber-800"><Crown size={17}/> Öne çıkan ilan</div><div className="text-2xl font-black">1.500 XPF</div></div>
-     <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200"><div className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-500"><CreditCard size={17}/> Mağaza üyeliği</div><div className="text-2xl font-black">9.900 XPF / ay</div></div>
-    </div>
-   </section>
-
-   <SearchFilters
-    query={query}
-    setQuery={setQuery}
+    filteredCount={filtered.length}
     category={category}
     setCategory={setCategory}
+    subcategory={subcategory}
+    setSubcategory={setSubcategory}
     location={location}
     setLocation={setLocation}
     minPrice={minPrice}
@@ -611,16 +576,11 @@ export default function HomePage(){
     sort={sort}
     setSort={setSort}
     locations={locations}
-    onSearch={()=>{trackEvent('search',{query,category,location,minPrice,maxPrice,sort,source:'filters'},user?.id); refreshListings();}}
+    onSearch={()=>{trackEvent('search',{query,category,subcategory,location,minPrice,maxPrice,sort,source:'discovery'},user?.id); refreshListings();}}
     onClear={clearFilters}
     onSaveSearch={handleSaveSearch}
-    compact={!mobileFiltersOpen}
+    mobileOpen={mobileFiltersOpen}
     onCloseMobile={()=>setMobileFiltersOpen(false)}
-   />
-
-   <AdvancedCategoryFilters
-    category={category}
-    onSuggest={()=>alert('Sonraki aşamada kategoriye özel metadata filtrelerini gerçek arama API’sine bağlayacağız.')}
    />
 
    <section className="mx-auto max-w-7xl px-4 py-8">
@@ -676,7 +636,7 @@ export default function HomePage(){
     onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
     onProfile={()=>user ? setShowProfile(true) : setShowAuth(true)}
     onNotifications={()=>user ? setShowNotifications(true) : setShowAuth(true)}
-    onSearchFocus={()=>document.getElementById('search')?.scrollIntoView({ behavior: 'smooth' })}
+    onSearchFocus={()=>document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' })}
   />
   <CompareBar
     items={compareItems}

@@ -1,4 +1,4 @@
-import { Heart, MapPin, Eye, Crown, Camera, Clock3, Square, CheckSquare } from 'lucide-react';
+import { Heart, MapPin, Crown, Camera, Clock3, Square, CheckSquare } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 
 function isPremiumActive(item) {
@@ -28,38 +28,31 @@ export default function ListingCard({ item, onClick, onFavorite, isFavorite, onC
   return (
     <article
       onClick={onClick}
-      className={`group cursor-pointer overflow-hidden rounded-[2rem] bg-white transition duration-300 hover:-translate-y-1 ${
-        premiumActive
-          ? 'shadow-xl ring-2 ring-amber-300'
-          : 'shadow-sm ring-1 ring-slate-200 hover:shadow-xl'
+      className={`group cursor-pointer overflow-hidden rounded-[1.65rem] bg-white transition duration-200 hover:-translate-y-0.5 ${
+        premiumActive ? 'shadow-md ring-2 ring-amber-300' : 'shadow-sm ring-1 ring-slate-200 hover:shadow-lg'
       }`}
     >
-      <div className="relative h-56 overflow-hidden bg-slate-100">
+      <div className="relative h-52 overflow-hidden bg-slate-100 sm:h-56">
         <OptimizedImage
           src={item.image}
           alt={item.title}
-          className="object-cover transition duration-500 group-hover:scale-105"
+          className="object-cover transition duration-500 group-hover:scale-[1.03]"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/60 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950/55 to-transparent" />
 
-        {premiumActive ? (
-          <div className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950 shadow-lg ring-2 ring-white/80">
-            <Crown size={14} /> Premium
-          </div>
-        ) : (
-          <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-slate-800 shadow-sm backdrop-blur">
-            {item.badge || 'Yeni ilan'}
-          </div>
-        )}
+        <div className="absolute left-3 top-3 flex gap-2">
+          {premiumActive ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-amber-950 shadow-sm ring-2 ring-white/80"><Crown size={13} /> Premium</span>
+          ) : (
+            <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-800 shadow-sm backdrop-blur">{item.badge || 'Yeni'}</span>
+          )}
+        </div>
 
         <button
           type="button"
           aria-label="Favorilere ekle"
-          onClick={(event) => {
-            event.stopPropagation();
-            onFavorite?.(item);
-          }}
+          onClick={(event) => { event.stopPropagation(); onFavorite?.(item); }}
           className={`absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full shadow-sm backdrop-blur transition active:scale-95 ${
             isFavorite ? 'bg-rose-600 text-white' : 'bg-white/92 text-slate-800 hover:bg-rose-50 hover:text-rose-600'
           }`}
@@ -70,15 +63,13 @@ export default function ListingCard({ item, onClick, onFavorite, isFavorite, onC
         <button
           type="button"
           aria-label="Karşılaştırmaya ekle"
-          onClick={(event) => {
-            event.stopPropagation();
-            onCompare?.(item);
-          }}
-          className={`absolute right-3 top-16 inline-flex items-center gap-1 rounded-full px-3 py-2 text-xs font-black shadow-sm backdrop-blur transition active:scale-95 ${
+          onClick={(event) => { event.stopPropagation(); onCompare?.(item); }}
+          className={`absolute right-3 top-16 flex h-9 w-9 items-center justify-center rounded-full shadow-sm backdrop-blur transition active:scale-95 ${
             isCompared ? 'bg-slate-950 text-white' : 'bg-white/92 text-slate-800 hover:bg-slate-950 hover:text-white'
           }`}
+          title="Kıyasla"
         >
-          {isCompared ? <CheckSquare size={14} /> : <Square size={14} />} Kıyasla
+          {isCompared ? <CheckSquare size={16} /> : <Square size={16} />}
         </button>
 
         <div className="absolute bottom-3 left-3 flex items-center gap-2 text-xs font-bold text-white">
@@ -87,29 +78,18 @@ export default function ListingCard({ item, onClick, onFavorite, isFavorite, onC
         </div>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="text-xs font-black uppercase tracking-wide text-slate-500">
-            {item.category}{item.subcategory ? ` / ${item.subcategory}` : ''}
-          </div>
-
-          {premiumActive && (
-            <div className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 ring-1 ring-amber-200">
-              Üst sıra
-            </div>
-          )}
+          <div className="truncate text-xs font-black uppercase tracking-wide text-slate-500">{item.category}{item.subcategory ? ` / ${item.subcategory}` : ''}</div>
+          {premiumActive && <div className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-black text-amber-700 ring-1 ring-amber-200">Üst sıra</div>}
         </div>
 
-        <h3 className="line-clamp-2 min-h-[3.2rem] text-lg font-black leading-snug text-slate-950">{item.title}</h3>
-        <div className="mt-3 text-2xl font-black tracking-tight">{item.priceText}</div>
+        <h3 className="line-clamp-2 min-h-[2.8rem] text-base font-black leading-snug text-slate-950 sm:text-lg">{item.title}</h3>
+        <div className="mt-3 text-xl font-black tracking-tight sm:text-2xl">{item.priceText}</div>
 
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm text-slate-500">
-          <span className="flex min-w-0 items-center gap-2">
-            <MapPin size={16} className="shrink-0" /> <span className="truncate">{item.location}</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <Eye size={15} /> {item.views || 0}
-          </span>
+          <span className="flex min-w-0 items-center gap-2"><MapPin size={16} className="shrink-0" /> <span className="truncate">{item.location}</span></span>
+          <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-500 ring-1 ring-slate-100">Detay</span>
         </div>
       </div>
     </article>

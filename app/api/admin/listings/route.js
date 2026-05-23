@@ -13,7 +13,7 @@ const supabase = createClient(
   }
 );
 
-const listingSelect = '*, listing_images(image_url, sort_order)';
+const listingSelect = 'id,user_id,title,description,category,subcategory,condition,price,currency,location,seller_name,seller_phone,seller_email,image_url,status,is_featured,featured_until,view_count,created_at,updated_at,metadata,listing_images(image_url, sort_order)';
 
 export async function GET() {
   try {
@@ -22,7 +22,8 @@ export async function GET() {
       .select(listingSelect)
       .order('is_featured', { ascending: false })
       .order('featured_until', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
