@@ -3,7 +3,6 @@ import { stripe } from '@/lib/stripe';
 import { getPremiumPlan, PREMIUM_PLANS } from '@/lib/premiumPlans';
 import { createSupabaseServiceClient, getAppUrl } from '@/lib/paymentFulfillment';
 
-export const runtime = 'nodejs';
 
 const supabaseAdmin = createSupabaseServiceClient();
 

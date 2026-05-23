@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createSupabaseServiceClient, fulfillPremiumCheckout, logPaymentEvent } from '@/lib/paymentFulfillment';
 
-export const runtime = 'nodejs';
 
 const supabaseAdmin = createSupabaseServiceClient();
 

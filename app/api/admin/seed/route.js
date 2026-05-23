@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { seedListings } from '@/lib/seedListings';
 
-export const runtime = 'nodejs';
 
 function makeAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
