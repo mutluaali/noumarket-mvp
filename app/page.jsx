@@ -30,11 +30,14 @@ import TrustStrip from '@/components/TrustStrip';
 import BottomNav from '@/components/BottomNav';
 import FeedbackModal from '@/components/FeedbackModal';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import OnboardingModal from '@/components/OnboardingModal';
+import ActivationNudges from '@/components/ActivationNudges';
 import DeployChecklist from '@/components/DeployChecklist';
 import ListingSkeleton from '@/components/ListingSkeleton';
 import EmptyState from '@/components/EmptyState';
 import RecentlyViewed from '@/components/RecentlyViewed';
 import { createSavedSearch } from '@/lib/savedSearches';
+import { hasCompletedOnboarding, markActivationEvent } from '@/lib/onboarding';
 import { getOrCreateConversation } from '@/lib/messages';
 import { getFavoriteIds, toggleFavorite } from '@/lib/favorites';
 import { demoListings, formatXpf } from '@/lib/demoData';
@@ -70,6 +73,7 @@ export default function HomePage(){
  const [showSavedSearches,setShowSavedSearches]=useState(false);
  const [showProfile,setShowProfile]=useState(false);
  const [showFeedback,setShowFeedback]=useState(false);
+ const [showOnboarding,setShowOnboarding]=useState(false);
  const [notificationCount,setNotificationCount]=useState(0);
  const [favoriteIds,setFavoriteIds]=useState([]);
  const [compareIds,setCompareIds]=useState([]);
@@ -105,6 +109,14 @@ export default function HomePage(){
    }
 
    cleanupOldCaches();
+ }, []);
+
+ useEffect(() => {
+   if (typeof window === 'undefined') return;
+   if (!hasCompletedOnboarding()) {
+     const timer = setTimeout(() => setShowOnboarding(true), 700);
+     return () => clearTimeout(timer);
+   }
  }, []);
  const [activeConversation,setActiveConversation]=useState(null);
 
@@ -395,6 +407,7 @@ export default function HomePage(){
 
    try{
      const nextValue = await toggleFavorite(user.id, listing.id, isCurrentlyFavorite);
+     if(nextValue) markActivationEvent('favorite');
      setFavoriteIds((current)=>{
        if(nextValue) return Array.from(new Set([...current, listing.id]));
        return current.filter((id)=>id!==listing.id);
@@ -422,6 +435,7 @@ export default function HomePage(){
        buyerId: user.id,
        sellerId: listing.user_id,
      });
+     markActivationEvent('message');
      setActiveConversation(conversation);
    }catch(error){
      alert(error.message || 'Sohbet başlatılamadı.');
@@ -535,6 +549,13 @@ export default function HomePage(){
 
    <TrustStrip />
    <SearchIntentBar query={query} setQuery={setQuery} onSearch={refreshListings} onApplyIntent={applySmartSearchIntent} />
+   <ActivationNudges
+    user={user}
+    listingCount={approved.filter((item)=>item.user_id===user?.id).length}
+    onCreate={()=>setShowCreate(true)}
+    onFavorites={()=>user ? setShowFavorites(true) : setShowAuth(true)}
+    onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
+   />
    <CategoryShowcase activeCategory={category} counts={categoryCounts} onSelect={setCategory} />
    <RecentlyViewed
     listings={approved}
@@ -633,6 +654,7 @@ export default function HomePage(){
     onClear={()=>setCompareIds([])}
   />
 
+  {showOnboarding&&<OnboardingModal onClose={()=>setShowOnboarding(false)} onCreateListing={()=>setShowCreate(true)} />}
   {showAuth&&<AuthModal onClose={async()=>{
     setShowAuth(false);
     const {data}=await supabase.auth.getSession();
@@ -658,7 +680,8 @@ export default function HomePage(){
       onClose={()=>setShowMessages(false)}
       onOpenConversation={(conversation)=>{
         setShowMessages(false);
-        setActiveConversation(conversation);
+        markActivationEvent('message');
+     setActiveConversation(conversation);
       }}
     />
   )}
