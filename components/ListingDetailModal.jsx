@@ -3,6 +3,7 @@
 import { X, MapPin, User, Phone, Mail, MessageCircle, AlertTriangle, ChevronLeft, ChevronRight, Eye, CalendarDays, Camera, Flag } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import ReportListingModal from '@/components/ReportListingModal';
+import SellerTrustBadge from '@/components/SellerTrustBadge';
 
 function normalizePhone(phone) {
   return String(phone || '').replace(/[^0-9]/g, '');
@@ -122,6 +123,10 @@ export default function ListingDetailModal({ selected, user, onClose, onStartCha
             </div>
             <div className="mt-2 flex items-center gap-2 text-sm text-slate-700">
               <Mail size={16} /> {email || 'E-posta yok'}
+            </div>
+
+            <div className="mt-4">
+              <SellerTrustBadge listing={selected} />
             </div>
 
             <button

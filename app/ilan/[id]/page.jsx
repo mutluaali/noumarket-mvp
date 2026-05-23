@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { AlertTriangle, ArrowLeft, CalendarDays, Camera, Crown, Eye, Mail, MapPin, MessageCircle, Phone, ShieldCheck, User } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CalendarDays, Camera, Crown, Eye, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Store, User } from 'lucide-react';
 import ListingViewTracker from '@/components/ListingViewTracker';
 import SimilarListings from '@/components/SimilarListings';
+import SellerTrustBadge from '@/components/SellerTrustBadge';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -193,9 +194,20 @@ export default async function ListingPage({ params }) {
 
             <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-200 md:p-7">
               <div className="mb-4 text-sm font-black text-slate-500">Satıcı bilgileri</div>
-              <div className="flex items-center gap-2 text-lg font-black"><User size={18} /> {listing.seller_name || 'Satıcı'}</div>
+              {listing.user_id ? (
+                <Link href={`/satici/${listing.user_id}`} className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200 hover:bg-slate-100">
+                  <span className="flex items-center gap-2 text-lg font-black"><Store size={18} /> {listing.seller_name || 'Satıcı'}</span>
+                  <span className="text-xs font-black text-slate-500">Profili gör</span>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2 text-lg font-black"><User size={18} /> {listing.seller_name || 'Satıcı'}</div>
+              )}
               <div className="mt-4 flex items-center gap-2 text-sm text-slate-700"><Phone size={16} /> {phone || 'Telefon yok'}</div>
               <div className="mt-2 flex items-center gap-2 text-sm text-slate-700"><Mail size={16} /> {email || 'E-posta yok'}</div>
+
+              <div className="mt-4">
+                <SellerTrustBadge listing={{ ...listing, phone, email, images }} />
+              </div>
 
               {whatsappPhone && (
                 <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer" className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white hover:bg-emerald-700">
