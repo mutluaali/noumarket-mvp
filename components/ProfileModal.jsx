@@ -23,7 +23,8 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
       }
 
       try {
-        const row = await getCurrentProfile(user.id);
+        const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 7000));
+        const row = await Promise.race([getCurrentProfile(user.id), timeout]);
         if (!alive) return;
         setForm({
           full_name: row?.full_name || '',
