@@ -28,6 +28,8 @@ import AdvancedCategoryFilters from '@/components/AdvancedCategoryFilters';
 import CategoryShowcase from '@/components/CategoryShowcase';
 import TrustStrip from '@/components/TrustStrip';
 import BottomNav from '@/components/BottomNav';
+import FeedbackModal from '@/components/FeedbackModal';
+import InstallAppPrompt from '@/components/InstallAppPrompt';
 import DeployChecklist from '@/components/DeployChecklist';
 import ListingSkeleton from '@/components/ListingSkeleton';
 import EmptyState from '@/components/EmptyState';
@@ -67,6 +69,7 @@ export default function HomePage(){
  const [showNotifications,setShowNotifications]=useState(false);
  const [showSavedSearches,setShowSavedSearches]=useState(false);
  const [showProfile,setShowProfile]=useState(false);
+ const [showFeedback,setShowFeedback]=useState(false);
  const [notificationCount,setNotificationCount]=useState(0);
  const [favoriteIds,setFavoriteIds]=useState([]);
  const [compareIds,setCompareIds]=useState([]);
@@ -458,6 +461,7 @@ export default function HomePage(){
       setShowNotifications(false);
       setShowSavedSearches(false);
       setShowProfile(false);
+      setShowFeedback(false);
       setNotificationCount(0);
       setFavoriteIds([]);
 
@@ -606,12 +610,20 @@ export default function HomePage(){
    </section>
    <DeployChecklist />
   </main>
+  <button
+    onClick={()=>setShowFeedback(true)}
+    className="fixed bottom-24 right-4 z-40 hidden rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-slate-800 lg:block"
+  >
+    Beta feedback
+  </button>
+  <InstallAppPrompt />
   <BottomNav
     user={user}
     notificationCount={notificationCount}
     onCreate={()=>setShowCreate(true)}
     onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
     onProfile={()=>user ? setShowProfile(true) : setShowAuth(true)}
+    onFeedback={()=>setShowFeedback(true)}
     onSearchFocus={()=>document.getElementById('search')?.scrollIntoView({ behavior: 'smooth' })}
   />
   <CompareBar
@@ -685,6 +697,12 @@ export default function HomePage(){
       user={user}
       onClose={()=>setShowSavedSearches(false)}
       onApply={applySavedSearch}
+    />
+  )}
+  {showFeedback&&(
+    <FeedbackModal
+      user={user}
+      onClose={()=>setShowFeedback(false)}
     />
   )}
   {showCompare&&compareItems.length>0&&(

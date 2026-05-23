@@ -1,11 +1,11 @@
 'use client';
 
-import { Home, Search, PlusCircle, MessageCircle, UserRound } from 'lucide-react';
+import { Home, Search, PlusCircle, MessageCircle, UserRound, Bug } from 'lucide-react';
 
-export default function BottomNav({ onCreate, onMessages, onProfile, onSearchFocus, user, notificationCount = 0 }) {
+export default function BottomNav({ onCreate, onMessages, onProfile, onSearchFocus, onFeedback, user, notificationCount = 0 }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-2 shadow-[0_-14px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1 text-[11px] font-black text-slate-500">
+      <div className="mx-auto grid max-w-md grid-cols-6 items-end gap-1 text-[11px] font-black text-slate-500">
         <a href="#top" className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 active:bg-slate-100">
           <Home size={21} /> Ana sayfa
         </a>
@@ -21,6 +21,9 @@ export default function BottomNav({ onCreate, onMessages, onProfile, onSearchFoc
         <button onClick={onMessages} className="relative flex flex-col items-center gap-1 rounded-2xl px-2 py-2 active:bg-slate-100">
           <MessageCircle size={21} /> Mesaj
           {notificationCount > 0 && <span className="absolute right-4 top-1 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />}
+        </button>
+        <button onClick={onFeedback} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 active:bg-slate-100">
+          <Bug size={21} /> Beta
         </button>
         <button onClick={onProfile} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 active:bg-slate-100">
           <UserRound size={21} /> {user ? 'Profil' : 'Giriş'}

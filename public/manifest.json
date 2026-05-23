@@ -8,7 +8,49 @@
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "scope": "/",
+  "categories": [
+    "shopping",
+    "business",
+    "lifestyle"
+  ],
+  "lang": "fr-NC",
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "İlan ver",
+      "short_name": "İlan ver",
+      "description": "NouMarket üzerinde yeni ilan oluştur",
+      "url": "/?action=create",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ara",
+      "short_name": "Ara",
+      "description": "NouMarket ilanlarında ara",
+      "url": "/#search",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
