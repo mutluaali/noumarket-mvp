@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { ArrowLeft, BadgeCheck, CalendarDays, Clock3, Eye, MapPin, MessageCircle, Phone, ShieldCheck, Star, Store, User } from 'lucide-react';
 import ListingCard from '@/components/ListingCard';
 import TrustScoreCard from '@/components/TrustScoreCard';
+import SellerReviews from '@/components/SellerReviews';
+import FollowSellerButton from '@/components/FollowSellerButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -143,11 +145,14 @@ export default async function SellerPage({ params }) {
                 </div>
               </div>
 
-              {whatsappPhone && (
-                <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white hover:bg-emerald-600">
-                  <MessageCircle size={17} /> WhatsApp ile yaz
-                </a>
-              )}
+              <div className="grid gap-3">
+                {whatsappPhone && (
+                  <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white hover:bg-emerald-600">
+                    <MessageCircle size={17} /> WhatsApp ile yaz
+                  </a>
+                )}
+                <FollowSellerButton sellerId={seller.id} />
+              </div>
             </div>
           </div>
 
@@ -164,6 +169,10 @@ export default async function SellerPage({ params }) {
 
           {seller.bio && <div className="border-t border-slate-200 p-5 text-sm leading-7 text-slate-700 md:p-7">{seller.bio}</div>}
         </section>
+
+        <div className="mt-6">
+          <SellerReviews sellerId={seller.id} />
+        </div>
 
         <section className="mt-6">
           <div className="mb-4 flex items-center justify-between gap-3">

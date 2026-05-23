@@ -5,6 +5,9 @@ import { AlertTriangle, ArrowLeft, CalendarDays, Camera, Crown, Eye, Mail, MapPi
 import ListingViewTracker from '@/components/ListingViewTracker';
 import SimilarListings from '@/components/SimilarListings';
 import SellerTrustBadge from '@/components/SellerTrustBadge';
+import PriceWatchButton from '@/components/PriceWatchButton';
+import ShareListingButton from '@/components/ShareListingButton';
+import FollowSellerButton from '@/components/FollowSellerButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -220,6 +223,12 @@ export default async function ListingPage({ params }) {
                   <Mail size={17} /> E-posta gönder
                 </a>
               )}
+
+              <div className="mt-3 grid gap-3">
+                <PriceWatchButton listingId={listing.id} currentPrice={listing.price} />
+                <ShareListingButton title={listing.title} />
+                {listing.user_id && <FollowSellerButton sellerId={listing.user_id} />}
+              </div>
             </section>
 
             <section className="rounded-[2rem] bg-amber-50 p-4 text-sm leading-6 text-amber-950 ring-1 ring-amber-200">
