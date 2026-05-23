@@ -41,7 +41,7 @@ import { hasCompletedOnboarding, markActivationEvent } from '@/lib/onboarding';
 import { getOrCreateConversation } from '@/lib/messages';
 import { getFavoriteIds, toggleFavorite } from '@/lib/favorites';
 import { demoListings, formatXpf } from '@/lib/demoData';
-import { supabase } from '@/lib/supabase';
+import { supabase, getStableSession } from '@/lib/supabase';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
 import { trackEvent } from '@/lib/analytics';
@@ -195,8 +195,8 @@ export default function HomePage(){
 
    async function bootAuth(){
      try{
-       const { data } = await supabase.auth.getSession();
-       const currentUser = data?.session?.user ?? null;
+       const session = await getStableSession();
+       const currentUser = session?.user ?? null;
 
        if(!alive) return;
 
@@ -665,16 +665,16 @@ export default function HomePage(){
   />
 
   {showOnboarding&&<OnboardingModal onClose={()=>setShowOnboarding(false)} onCreateListing={()=>setShowCreate(true)} />}
-  {showAuth&&<AuthModal onClose={async()=>{
-    setShowAuth(false);
-    const {data}=await supabase.auth.getSession();
-    const currentUser = data?.session?.user ?? null;
-    setUser(currentUser);
-    await refreshProfile(currentUser);
-    await refreshNotifications(currentUser);
-    await refreshFavorites(currentUser);
-    await refreshListings();
-  }}/>}
+  {showAuth&&<AuthModal
+    onClose={()=>setShowAuth(false)}
+    onAuthenticated={async(currentUser)=>{
+      setUser(currentUser);
+      await refreshProfile(currentUser);
+      await refreshNotifications(currentUser);
+      await refreshFavorites(currentUser);
+      await refreshListings();
+    }}
+  />}
   {showCreate&&<ListingForm onClose={()=>setShowCreate(false)} onCreate={handleCreate} user={user} profile={profile}/>}  
   {showAdmin&&isAdmin&&<AdminPanel listings={listings} onApprove={approve} onReject={reject} onDelete={del} onFeature={feature} onClose={()=>setShowAdmin(false)}/>}  
   {showPricing&&<PricingModal onClose={()=>setShowPricing(false)}/>}  

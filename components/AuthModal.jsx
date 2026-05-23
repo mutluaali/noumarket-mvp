@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { supabase, hasSupabase } from '@/lib/supabase';
+import { supabase, hasSupabase, getStableSession } from '@/lib/supabase';
 
-export default function AuthModal({ onClose }) {
+export default function AuthModal({ onClose, onAuthenticated }) {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,12 +13,17 @@ export default function AuthModal({ onClose }) {
   const [loading, setLoading] = useState(false);
 
   async function closeAndRefresh() {
+    const session = await getStableSession();
+    await onAuthenticated?.(session?.user || null);
     onClose?.();
+  }
 
-    // Session bilgisinin tüm componentlere yayılması için refresh
-    setTimeout(() => {
-      window.location.reload();
-    }, 300);
+  async function withAuthTimeout(promise, ms = 12000) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Giriş zaman aşımına uğradı. İnternet bağlantını kontrol edip tekrar dene.')), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
   }
 
   async function submit(e) {
@@ -33,7 +38,7 @@ export default function AuthModal({ onClose }) {
     }
 
     if (mode === 'register') {
-      const { error } = await supabase.auth.signUp({
+      const { error } = await withAuthTimeout(supabase.auth.signUp({
         email,
         password,
         options: {
@@ -41,7 +46,7 @@ export default function AuthModal({ onClose }) {
             full_name: fullName,
           },
         },
-      });
+      }));
 
       if (error) {
         setLoading(false);
@@ -50,10 +55,10 @@ export default function AuthModal({ onClose }) {
       }
 
       const { error: loginError } =
-        await supabase.auth.signInWithPassword({
+        await withAuthTimeout(supabase.auth.signInWithPassword({
           email,
           password,
-        });
+        }));
 
       setLoading(false);
 
@@ -64,31 +69,28 @@ export default function AuthModal({ onClose }) {
       }
 
       setMessage('Kayıt ve giriş başarılı.');
-
-      setTimeout(() => {
-        closeAndRefresh();
-      }, 500);
-
+      await closeAndRefresh();
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await withAuthTimeout(supabase.auth.signInWithPassword({
+        email,
+        password,
+      }));
 
-    setLoading(false);
+      if (error) {
+        setMessage(error.message);
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      setMessage(error.message);
-      return;
+      setMessage('Giriş başarılı.');
+      await closeAndRefresh();
+    } catch (error) {
+      setMessage(error.message || 'Giriş sırasında beklenmeyen bir hata oluştu.');
+      setLoading(false);
     }
-
-    setMessage('Giriş başarılı.');
-
-    setTimeout(() => {
-      closeAndRefresh();
-    }, 500);
   }
 
   return (
