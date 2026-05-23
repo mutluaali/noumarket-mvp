@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X, Send, MessageCircle } from 'lucide-react';
-import { getMessages, sendMessage } from '@/lib/messages';
+import { useEffect, useRef, useState } from 'react';
+import { X, Send, MessageCircle, CheckCheck } from 'lucide-react';
+import { getMessages, markConversationRead, sendMessage, subscribeToConversation } from '@/lib/messages';
+import { supabase } from '@/lib/supabase';
 
 export default function ChatModal({ user, conversation, onClose }) {
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const scrollRef = useRef(null);
 
   async function loadMessages() {
     if (!conversation?.id) return;
@@ -16,6 +18,7 @@ export default function ChatModal({ user, conversation, onClose }) {
     try {
       const data = await getMessages(conversation.id);
       setMessages(data);
+      if (user?.id) await markConversationRead({ conversationId: conversation.id, userId: user.id });
     } catch (error) {
       alert(error.message || 'Mesajlar yüklenemedi.');
     } finally {
@@ -26,6 +29,39 @@ export default function ChatModal({ user, conversation, onClose }) {
   useEffect(() => {
     loadMessages();
   }, [conversation?.id]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (!conversation?.id) return;
+
+    const channel = subscribeToConversation({
+      conversationId: conversation.id,
+      onMessage: async (message) => {
+        setMessages((current) => {
+          if (current.some((item) => item.id === message.id)) return current;
+          return [...current, message];
+        });
+
+        if (user?.id && message.sender_id !== user.id) {
+          try {
+            await markConversationRead({ conversationId: conversation.id, userId: user.id });
+          } catch (error) {
+            console.warn('mark read warning:', error);
+          }
+        }
+      },
+      onChange: (message) => {
+        setMessages((current) => current.map((item) => (item.id === message.id ? message : item)));
+      },
+    });
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [conversation?.id, user?.id]);
 
   async function handleSend(e) {
     e.preventDefault();
@@ -38,7 +74,7 @@ export default function ChatModal({ user, conversation, onClose }) {
         senderId: user.id,
         body: body.trim(),
       });
-      setMessages((current) => [...current, sent]);
+      setMessages((current) => current.some((item) => item.id === sent.id) ? current : [...current, sent]);
       setBody('');
     } catch (error) {
       alert(error.message || 'Mesaj gönderilemedi.');
@@ -51,11 +87,11 @@ export default function ChatModal({ user, conversation, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="mx-auto flex max-h-[92vh] max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+      <div className="mx-auto flex h-[92vh] max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 p-5">
           <div>
             <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-              <MessageCircle size={16} /> Mesajlaşma
+              <MessageCircle size={16} /> Canlı mesajlaşma
             </div>
             <h2 className="mt-1 text-xl font-black">{listingTitle}</h2>
           </div>
@@ -80,13 +116,15 @@ export default function ChatModal({ user, conversation, onClose }) {
                   mine ? 'bg-slate-900 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-200'
                 }`}>
                   <div>{message.body}</div>
-                  <div className={`mt-1 text-[11px] ${mine ? 'text-slate-300' : 'text-slate-400'}`}>
+                  <div className={`mt-1 flex items-center justify-end gap-1 text-[11px] ${mine ? 'text-slate-300' : 'text-slate-400'}`}>
                     {new Date(message.created_at).toLocaleString()}
+                    {mine && message.read_at && <CheckCheck size={13} />}
                   </div>
                 </div>
               </div>
             );
           })}
+          <div ref={scrollRef} />
         </div>
 
         <form onSubmit={handleSend} className="flex gap-2 border-t border-slate-200 p-4">
@@ -97,7 +135,7 @@ export default function ChatModal({ user, conversation, onClose }) {
             className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
           />
           <button
-            disabled={sending}
+            disabled={sending || !body.trim()}
             className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white disabled:opacity-60"
           >
             <Send size={16} /> Gönder

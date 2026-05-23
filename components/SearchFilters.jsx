@@ -1,8 +1,7 @@
 'use client';
 
-import { SlidersHorizontal, Search } from 'lucide-react';
-
-const categories = ['Tümü', 'Araç', 'Emlak', 'Denizcilik', 'Elektronik', 'Ev Eşyası', 'İş / Hizmet'];
+import { BookmarkPlus, SlidersHorizontal, Search, X } from 'lucide-react';
+import { categoryOptions } from '@/lib/categories';
 
 export default function SearchFilters({
   query,
@@ -20,14 +19,19 @@ export default function SearchFilters({
   locations = ['Tümü'],
   onSearch,
   onClear,
+  onSaveSearch,
+  compact = false,
+  onCloseMobile,
 }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-4">
-      <div className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-700">
-        <SlidersHorizontal size={18} /> Gelişmiş arama
+    <section className={`mx-auto max-w-7xl px-4 py-4 ${compact ? 'hidden md:block' : 'fixed inset-0 z-50 overflow-auto bg-slate-950/45 py-10 backdrop-blur md:static md:block md:bg-transparent md:py-4 md:backdrop-blur-0'}`}> 
+      <div className="mb-4 flex items-center justify-between gap-2 text-sm font-bold text-slate-700">
+        <span className="inline-flex items-center gap-2"><SlidersHorizontal size={18} /> Detaylı arama</span>
+        {!compact && <button onClick={onCloseMobile} className="rounded-full bg-white p-2 shadow-sm md:hidden"><X size={18} /></button>}
       </div>
 
       <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold leading-5 text-slate-500">Sahibinden mantığı: kategori + fiyat + konum + sıralama; istersen seçtikçe otomatik, istersen Ara butonuyla sonuç getir.</div>
         <div className="grid gap-3 md:grid-cols-[1.3fr_0.8fr_0.8fr]">
           <div className="flex items-center gap-3 rounded-2xl bg-slate-100 px-4 py-3">
             <Search className="text-slate-500" size={20} />
@@ -47,7 +51,7 @@ export default function SearchFilters({
             onChange={(e) => setCategory(e.target.value)}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
           >
-            {categories.map((x) => (
+            {categoryOptions.map((x) => (
               <option key={x}>{x}</option>
             ))}
           </select>
@@ -91,15 +95,23 @@ export default function SearchFilters({
             <option value="price_high">Fiyat yüksekten düşüğe</option>
           </select>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
-              onClick={onSearch}
+              onClick={() => { onSearch?.(); onCloseMobile?.(); }}
               className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white"
             >
               Ara
             </button>
             <button
-              onClick={onClear}
+              onClick={onSaveSearch}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm font-black text-sky-700 shadow-sm"
+              title="Bu filtreleri kaydet"
+            >
+              <BookmarkPlus size={15} />
+              Kaydet
+            </button>
+            <button
+              onClick={() => { onClear?.(); onCloseMobile?.(); }}
               className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold shadow-sm"
             >
               Temizle
@@ -109,7 +121,7 @@ export default function SearchFilters({
       </div>
 
       <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
-        {categories.map((x) => (
+        {categoryOptions.map((x) => (
           <button
             key={x}
             onClick={() => {

@@ -1,7 +1,9 @@
 import './globals.css';
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noumarket-mvp.vercel.app';
+
 export const metadata = {
-  metadataBase: new URL('https://noumarket-mvp.vercel.app'),
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'NouMarket | New Caledonia Classifieds',
     template: '%s | NouMarket',
@@ -27,7 +29,7 @@ export const metadata = {
     title: 'NouMarket | New Caledonia Classifieds',
     description:
       'Buy, sell, rent and find services in New Caledonia.',
-    url: 'https://noumarket-mvp.vercel.app',
+    url: siteUrl,
     siteName: 'NouMarket',
     locale: 'fr_NC',
     type: 'website',

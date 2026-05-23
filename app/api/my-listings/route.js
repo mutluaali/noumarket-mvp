@@ -92,6 +92,9 @@ export async function GET(request) {
     const listingIds = listingRows.map((item) => item.id).filter(Boolean);
 
     const imagesByListingId = {};
+    const favoriteCountByListingId = {};
+    const conversationCountByListingId = {};
+    const messageCountByListingId = {};
 
     if (listingIds.length > 0) {
       const { data: images, error: imagesError } = await supabaseAdmin
@@ -114,11 +117,59 @@ export async function GET(request) {
           sort_order: image.sort_order,
         });
       }
+
+      const { data: favorites, error: favoritesError } = await supabaseAdmin
+        .from('favorites')
+        .select('listing_id')
+        .in('listing_id', listingIds);
+
+      if (favoritesError) {
+        console.warn('favorites count query error:', favoritesError.message);
+      }
+
+      for (const row of favorites || []) {
+        favoriteCountByListingId[row.listing_id] = (favoriteCountByListingId[row.listing_id] || 0) + 1;
+      }
+
+      const { data: conversations, error: conversationsError } = await supabaseAdmin
+        .from('conversations')
+        .select('id, listing_id')
+        .in('listing_id', listingIds);
+
+      if (conversationsError) {
+        console.warn('conversations count query error:', conversationsError.message);
+      }
+
+      const conversationIds = [];
+      for (const row of conversations || []) {
+        conversationCountByListingId[row.listing_id] = (conversationCountByListingId[row.listing_id] || 0) + 1;
+        if (row.id) conversationIds.push(row.id);
+      }
+
+      if (conversationIds.length > 0) {
+        const conversationIdToListingId = Object.fromEntries((conversations || []).map((row) => [row.id, row.listing_id]));
+        const { data: messages, error: messagesError } = await supabaseAdmin
+          .from('messages')
+          .select('conversation_id')
+          .in('conversation_id', conversationIds);
+
+        if (messagesError) {
+          console.warn('messages count query error:', messagesError.message);
+        }
+
+        for (const row of messages || []) {
+          const listingId = conversationIdToListingId[row.conversation_id];
+          if (listingId) messageCountByListingId[listingId] = (messageCountByListingId[listingId] || 0) + 1;
+        }
+      }
     }
 
     const data = listingRows.map((listing) => ({
       ...listing,
       listing_images: imagesByListingId[listing.id] || [],
+      favorite_count: favoriteCountByListingId[listing.id] || 0,
+      conversation_count: conversationCountByListingId[listing.id] || 0,
+      message_count: messageCountByListingId[listing.id] || 0,
     }));
 
     return NextResponse.json({ data });

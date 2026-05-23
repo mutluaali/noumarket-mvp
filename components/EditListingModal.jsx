@@ -11,6 +11,8 @@ export default function EditListingModal({ listing, user, onClose, onUpdated }) 
   const [form, setForm] = useState({
     title: '',
     category: 'Araç',
+    subcategory: '',
+    condition: 'used',
     price: '',
     location: '',
     seller_name: '',
@@ -26,6 +28,8 @@ export default function EditListingModal({ listing, user, onClose, onUpdated }) 
     setForm({
       title: listing.title || '',
       category: listing.category || 'Araç',
+      subcategory: listing.subcategory || '',
+      condition: listing.condition || 'used',
       price: listing.price ? String(listing.price) : '',
       location: listing.location || '',
       seller_name: listing.seller || listing.seller_name || '',
@@ -100,6 +104,24 @@ export default function EditListingModal({ listing, user, onClose, onUpdated }) 
             {categories.map((x) => (
               <option key={x}>{x}</option>
             ))}
+          </select>
+
+          <input
+            value={form.subcategory}
+            onChange={(e) => update('subcategory', e.target.value)}
+            placeholder="Alt kategori"
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          />
+
+          <select
+            value={form.condition}
+            onChange={(e) => update('condition', e.target.value)}
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          >
+            <option value="new">Yeni</option>
+            <option value="like_new">Yeni gibi</option>
+            <option value="used">Kullanılmış</option>
+            <option value="damaged">Hasarlı</option>
           </select>
 
           <input

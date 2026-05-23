@@ -4,11 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_build_placeholder');
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'build-placeholder-service-role-key',
   {
     auth: {
       autoRefreshToken: false,
