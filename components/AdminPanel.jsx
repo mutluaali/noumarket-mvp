@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, ShieldCheck, RefreshCw, Crown, AlertTriangle, CreditCard, Users, Eye, CheckCircle2, Ban, Trash2, Star, BarChart3 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import SeedMarketplacePanel from '@/components/SeedMarketplacePanel';
+import GrowthAnalyticsPanel from '@/components/GrowthAnalyticsPanel';
 
 function money(amount, currency = 'XPF') {
   return `${Number(amount || 0).toLocaleString('fr-FR')} ${currency}`;
@@ -77,6 +78,7 @@ export default function AdminPanel({ listings, onApprove, onReject, onDelete, on
     ['moderation', `Onay (${pending.length})`],
     ['reports', `Şikayetler (${metrics.openReports || 0})`],
     ['payments', 'Ödemeler'],
+    ['analytics', 'Analytics'],
     ['seed', 'Seed içerik'],
   ];
 
@@ -193,6 +195,10 @@ export default function AdminPanel({ listings, onApprove, onReject, onDelete, on
               </div>
             ))}
           </div>
+        )}
+
+        {!loading && tab === 'analytics' && (
+          <GrowthAnalyticsPanel dashboard={dashboard} />
         )}
 
         {!loading && tab === 'seed' && (
