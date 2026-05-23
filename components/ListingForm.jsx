@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { categories, locations } from '@/lib/categories';
 import { scoreListingQuality } from '@/lib/listingQuality';
+import ListingAssistantPanel from '@/components/ListingAssistantPanel';
 
 const MAX_IMAGES = 8;
 
@@ -212,6 +213,14 @@ export default function ListingForm({ onClose, onCreate, user, profile }) {
     }));
   }
 
+  function applyAssistantDraft(draft) {
+    setForm((current) => ({
+      ...current,
+      title: draft.title || current.title,
+      description: draft.description || current.description,
+    }));
+  }
+
   function selectCategory(nextCategory) {
     const nextConfig = getConfig(nextCategory);
     setForm((current) => ({
@@ -381,7 +390,12 @@ export default function ListingForm({ onClose, onCreate, user, profile }) {
 
             {step === 2 && (
               <section>
-                <h3 className="text-xl font-black">İlan bilgileri</h3>
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div>
+                    <h3 className="text-xl font-black">İlan bilgileri</h3>
+                    <p className="mt-1 text-sm text-slate-500">Asistanı kullanarak daha güven veren başlık ve açıklama oluşturabilirsin.</p>
+                  </div>
+                </div>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   <input required value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="İlan başlığı" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none md:col-span-2" />
                   <input value={form.price} onChange={(e) => update('price', e.target.value)} type="number" placeholder="Fiyat / XPF" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none" />
@@ -408,6 +422,9 @@ export default function ListingForm({ onClose, onCreate, user, profile }) {
                   })}
 
                   <textarea value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Açıklama: ürünün durumu, kusurları, teslimat/konum bilgisi, pazarlık durumu..." rows={6} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none md:col-span-2" />
+                </div>
+                <div className="mt-5">
+                  <ListingAssistantPanel form={form} imageCount={previews.length} onApplyDraft={applyAssistantDraft} />
                 </div>
               </section>
             )}
