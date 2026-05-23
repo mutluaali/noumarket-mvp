@@ -644,7 +644,7 @@ export default function HomePage(){
     onCreate={()=>setShowCreate(true)}
     onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
     onProfile={()=>user ? setShowProfile(true) : setShowAuth(true)}
-    onFeedback={()=>setShowFeedback(true)}
+    onNotifications={()=>user ? setShowNotifications(true) : setShowAuth(true)}
     onSearchFocus={()=>document.getElementById('search')?.scrollIntoView({ behavior: 'smooth' })}
   />
   <CompareBar
