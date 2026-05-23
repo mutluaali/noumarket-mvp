@@ -1,67 +1,80 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { stripe } from '@/lib/stripe';
+import { createSupabaseServiceClient, fulfillPremiumCheckout, logPaymentEvent } from '@/lib/paymentFulfillment';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'build-placeholder-service-role-key'
-);
+export const runtime = 'nodejs';
+
+const supabaseAdmin = createSupabaseServiceClient();
 
 export async function POST(request) {
   const body = await request.text();
   const signature = request.headers.get('stripe-signature');
 
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'STRIPE_WEBHOOK_SECRET eksik.' }, { status: 500 });
+  }
+
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (error) {
-    console.error('Stripe webhook verification failed:', error.message);
+    console.error('Stripe webhook signature failed:', error.message);
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
   }
+
+  await logPaymentEvent({
+    supabase: supabaseAdmin,
+    eventId: event.id,
+    eventType: event.type,
+    sessionId: event.data?.object?.id,
+    payload: event,
+    status: 'received',
+  });
 
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
-      const listingId = session.metadata?.listing_id;
-      const userId = session.metadata?.user_id;
-      const premiumDays = Number(session.metadata?.premium_days || 7);
+      const result = await fulfillPremiumCheckout({ supabase: supabaseAdmin, session, source: 'stripe_webhook' });
 
-      if (listingId && userId) {
-        await supabaseAdmin
-          .from('payment_orders')
-          .update({
-            status: 'paid',
-            paid_at: new Date().toISOString(),
-            provider_payment_id: session.payment_intent || null,
-          })
-          .eq('provider_session_id', session.id);
+      await logPaymentEvent({
+        supabase: supabaseAdmin,
+        eventId: event.id,
+        eventType: event.type,
+        sessionId: session.id,
+        payload: { result },
+        status: 'processed',
+      });
+    }
 
-        const { error: premiumError } = await supabaseAdmin.rpc('activate_listing_premium', {
-          target_listing_id: listingId,
-          premium_days: premiumDays,
-        });
+    if (event.type === 'checkout.session.expired') {
+      const session = event.data.object;
+      await supabaseAdmin
+        .from('payment_orders')
+        .update({ status: 'expired', metadata: { ...(session.metadata || {}), expired_at: new Date().toISOString() } })
+        .eq('provider_session_id', session.id);
+    }
 
-        if (premiumError) throw premiumError;
-
-        await supabaseAdmin.from('notifications').insert({
-          user_id: userId,
-          type: 'premium_activated',
-          title: 'Premium ilan aktif edildi',
-          body: `${premiumDays} günlük premium süren başladı.`,
-          metadata: { listing_id: listingId },
-          is_read: false,
-        });
-      }
+    if (event.type === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object;
+      await supabaseAdmin
+        .from('payment_orders')
+        .update({ status: 'failed', provider_payment_id: paymentIntent.id })
+        .eq('provider_payment_id', paymentIntent.id);
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Webhook handling failed:', error);
-    return NextResponse.json({ error: 'Webhook handling failed' }, { status: 500 });
+    console.error('Stripe webhook handling failed:', error);
+    await logPaymentEvent({
+      supabase: supabaseAdmin,
+      eventId: event.id,
+      eventType: event.type,
+      sessionId: event.data?.object?.id,
+      payload: event,
+      status: 'failed',
+      errorMessage: error.message,
+    });
+    return NextResponse.json({ error: error.message || 'Webhook handling failed' }, { status: 500 });
   }
 }
