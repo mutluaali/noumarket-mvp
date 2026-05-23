@@ -273,6 +273,15 @@ export default function HomePage(){
    setTimeout(()=>refreshListings(), 0);
  }
 
+ function applySmartSearchIntent(intent){
+   setQuery(intent.query || '');
+   setCategory(intent.category || 'Tümü');
+   setLocation(intent.location || 'Tümü');
+   setMinPrice(intent.minPrice || '');
+   setMaxPrice(intent.maxPrice || '');
+   setSort(intent.sort || 'newest');
+ }
+
  const filtered=useMemo(()=>{
    let result = [...approved];
 
@@ -521,7 +530,7 @@ export default function HomePage(){
    </section>
 
    <TrustStrip />
-   <SearchIntentBar query={query} setQuery={setQuery} onSearch={refreshListings} />
+   <SearchIntentBar query={query} setQuery={setQuery} onSearch={refreshListings} onApplyIntent={applySmartSearchIntent} />
    <CategoryShowcase activeCategory={category} counts={categoryCounts} onSelect={setCategory} />
    <RecentlyViewed
     listings={approved}

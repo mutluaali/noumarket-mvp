@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { categories, locations } from '@/lib/categories';
+import { scoreListingQuality } from '@/lib/listingQuality';
 
 const MAX_IMAGES = 8;
 
@@ -194,6 +195,8 @@ export default function ListingForm({ onClose, onCreate, user, profile }) {
 
     return filePreviews;
   }, [imageFiles, form.image_url]);
+
+  const quality = useMemo(() => scoreListingQuality(form, previews.length), [form, previews.length]);
 
   function update(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -509,7 +512,24 @@ export default function ListingForm({ onClose, onCreate, user, profile }) {
                 <div className="flex justify-between gap-3"><span>Fotoğraf</span><b className="text-slate-900">{previews.length}/{MAX_IMAGES}</b></div>
                 <div className="flex justify-between gap-3"><span>Konum</span><b className="text-slate-900">{form.location}</b></div>
               </div>
-              <div className="mt-5 rounded-2xl bg-slate-950 p-4 text-xs leading-5 text-slate-200">
+              <div className="mt-5 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-black uppercase tracking-wide text-slate-500">İlan kalite skoru</span>
+                  <b className="text-sm text-slate-950">{quality.score}/100</b>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-slate-950" style={{ width: `${quality.score}%` }} />
+                </div>
+                <div className="mt-2 text-xs font-black text-slate-700">{quality.level}</div>
+                {quality.suggestions.length ? (
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-500">
+                    {quality.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs leading-5 text-emerald-700">İlan güçlü görünüyor. Onay ve dönüşüm şansı yüksek.</p>
+                )}
+              </div>
+              <div className="mt-4 rounded-2xl bg-slate-950 p-4 text-xs leading-5 text-slate-200">
                 Kaliteli ilan = net başlık + gerçek fotoğraf + kusurları saklamayan açıklama. Bu platformda güveni böyle kuracağız.
               </div>
             </div>
