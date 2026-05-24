@@ -1,121 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { MessageCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { X, MessageCircle, Clock3 } from 'lucide-react';
-import { getMyConversations, subscribeToMyConversations } from '@/lib/messages';
-
-function formatPrice(listing) {
-  if (!listing?.price) return 'Görüşülür';
-  return `${Number(listing.price).toLocaleString('fr-FR')} ${listing.currency || 'XPF'}`;
-}
+import { ModalShell, SkeletonBox, EmptyState, ErrorState, LoginRequired } from '@/components/AsyncState';
+import { getErrorMessage, withTimeout } from '@/lib/safeAsync';
 
 export default function MessagesModal({ user, onClose, onOpenConversation }) {
-  const [conversations, setConversations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorText, setErrorText] = useState('');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(Boolean(user?.id));
+  const [error, setError] = useState('');
 
-  async function load() {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setErrorText('');
+  const load = useCallback(async () => {
+    if (!user?.id) { setItems([]); setLoading(false); return; }
+    setLoading(true); setError('');
     try {
-      const data = await getMyConversations(user.id);
-      setConversations(data);
-    } catch (error) {
-      setErrorText(error.message || 'Mesajlar yüklenemedi. Supabase mesaj tablosu/RLS ayarını kontrol et.');
+      const { data, error: queryError } = await withTimeout(
+        supabase.from('conversations').select('*, listings(title, image_url, price, location)').or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`).order('updated_at', { ascending: false }).limit(30),
+        8000,
+        'Mesajlar sorgusu çok uzun sürdü. Supabase/RLS ayarlarını kontrol et.'
+      );
+      if (queryError) throw queryError;
+      setItems(data || []);
+    } catch (err) {
+      console.error('MessagesModal:', err);
+      setError(getErrorMessage(err, 'Mesajlar yüklenemedi.'));
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    load();
   }, [user?.id]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = subscribeToMyConversations({
-      userId: user.id,
-      onChange: () => load(),
-    });
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
+  useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="mx-auto max-h-[92vh] max-w-3xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-              <MessageCircle size={16} /> Mesajlarım
-            </div>
-            <h2 className="mt-1 text-2xl font-black">Konuşmalar</h2>
-          </div>
-          <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-            <X />
-          </button>
-        </div>
-
-        {errorText && <p className="mb-4 rounded-2xl bg-red-50 p-4 text-sm text-red-600 ring-1 ring-red-200">{errorText}</p>}
-
-        {loading && <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">Konuşmalar yükleniyor...</p>}
-
-        {!loading && conversations.length === 0 && (
-          <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500 ring-1 ring-slate-200">
-            Henüz konuşman yok.
-          </p>
-        )}
-
-        <div className="space-y-3">
-          {conversations.map((conversation) => {
-            const listing = conversation.listings || {};
-            const lastMessage = conversation.last_message;
-            const unreadCount = conversation.unread_count || 0;
-
-            return (
-              <button
-                key={conversation.id}
-                onClick={() => onOpenConversation(conversation)}
-                className="grid w-full gap-4 rounded-2xl bg-slate-50 p-4 text-left ring-1 ring-slate-200 transition hover:bg-white hover:shadow-sm sm:grid-cols-[72px_1fr_auto]"
-              >
-                <img
-                  src={listing.image_url || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=80'}
-                  alt={listing.title || 'İlan'}
-                  className="h-16 w-16 rounded-2xl object-cover"
-                />
-
-                <div className="min-w-0">
-                  <div className="truncate font-black">{listing.title || 'İlan mesajlaşması'}</div>
-                  <div className="mt-1 text-xs font-bold text-slate-500">{formatPrice(listing)}</div>
-                  <div className="mt-2 line-clamp-1 text-sm text-slate-600">
-                    {lastMessage?.body || 'Henüz mesaj yok.'}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 sm:block sm:text-right">
-                  <div className="inline-flex items-center gap-1 text-xs text-slate-500">
-                    <Clock3 size={13} /> {new Date(conversation.updated_at || conversation.created_at).toLocaleString()}
-                  </div>
-                  {unreadCount > 0 && (
-                    <div className="mt-2 inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-emerald-600 px-2 text-xs font-black text-white">
-                      {unreadCount}
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+    <ModalShell eyebrow="Mesajlar" title="Konuşmaların" subtitle="Alıcı ve satıcı mesajları burada görünür." onClose={onClose} action={user?.id ? <button onClick={load} className="hidden items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black ring-1 ring-slate-200 md:inline-flex"><RefreshCw size={16}/> Yenile</button> : null}>
+      {!user?.id ? <LoginRequired title="Mesajları görmek için giriş yap" text="Mesajlaşma hesabına bağlı çalışır." /> : loading ? <SkeletonBox lines={4} /> : error ? <ErrorState message={error} onRetry={load} /> : items.length === 0 ? <EmptyState icon={MessageCircle} title="Henüz konuşma yok" text="Bir ilanın satıcısına mesaj attığında konuşma burada görünür." /> : <div className="grid gap-3">{items.map((item) => <button key={item.id} onClick={() => onOpenConversation?.(item)} className="flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700"><MessageCircle size={20}/></div><div className="min-w-0 flex-1"><div className="truncate font-black text-slate-900">{item.listings?.title || item.title || 'Konuşma'}</div><div className="mt-1 truncate text-sm text-slate-500">Son güncelleme: {item.updated_at ? new Date(item.updated_at).toLocaleString('tr-TR') : '-'}</div></div></button>)}</div>}
+    </ModalShell>
   );
 }

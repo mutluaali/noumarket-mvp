@@ -1,161 +1,44 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { X, Heart, MapPin, RefreshCw } from 'lucide-react';
-import { getFavoriteListings } from '@/lib/favorites';
+import { useCallback, useEffect, useState } from 'react';
+import { Heart, RefreshCw } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { normalizeListing } from '@/lib/listings';
+import ListingCard from '@/components/ListingCard';
+import { ModalShell, SkeletonBox, EmptyState, ErrorState, LoginRequired } from '@/components/AsyncState';
+import { getErrorMessage, withTimeout } from '@/lib/safeAsync';
 
-function getListingImage(item) {
-  if (item?.image_url) return item.image_url;
-
-  if (Array.isArray(item?.listing_images) && item.listing_images.length > 0) {
-    return item.listing_images[0]?.image_url || '';
-  }
-
-  return '';
-}
-
-function formatPrice(item) {
-  if (item?.price === null || item?.price === undefined || item?.price === '') {
-    return 'Görüşülür';
-  }
-
-  const amount = Number(item.price);
-  if (Number.isNaN(amount)) return 'Görüşülür';
-
-  return `${amount.toLocaleString('fr-FR')} ${item.currency || 'XPF'}`;
-}
-
-export default function FavoritesModal({ onClose }) {
-  const mountedRef = useRef(false);
+export default function FavoritesModal({ user, onClose, onOpenListing }) {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorText, setErrorText] = useState('');
+  const [loading, setLoading] = useState(Boolean(user?.id));
+  const [error, setError] = useState('');
 
-  async function loadFavorites() {
-    setLoading(true);
-    setErrorText('');
-
+  const load = useCallback(async () => {
+    if (!user?.id) { setItems([]); setLoading(false); return; }
+    setLoading(true); setError('');
     try {
-      const rows = await getFavoriteListings();
-
-      if (!mountedRef.current) return;
-
-      setItems(Array.isArray(rows) ? rows : []);
-    } catch (error) {
-      console.error('FavoritesModal load error:', error);
-
-      if (!mountedRef.current) return;
-
+      const { data, error: queryError } = await withTimeout(
+        supabase.from('favorites').select('listing_id, listings(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
+        8000,
+        'Favoriler sorgusu çok uzun sürdü. Supabase/RLS ayarlarını kontrol et.'
+      );
+      if (queryError) throw queryError;
+      const normalized = (data || []).map((row) => row.listings).filter(Boolean).map(normalizeListing);
+      setItems(normalized);
+    } catch (err) {
+      console.error('FavoritesModal:', err);
+      setError(getErrorMessage(err, 'Favoriler yüklenemedi.'));
       setItems([]);
-      setErrorText(error?.message || 'Favoriler yüklenemedi.');
     } finally {
-      if (mountedRef.current) setLoading(false);
+      setLoading(false);
     }
-  }
+  }, [user?.id]);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    loadFavorites();
-
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="mx-auto max-h-[92vh] max-w-6xl overflow-auto rounded-3xl bg-white p-5 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <div className="mb-1 inline-flex items-center gap-2 text-sm font-bold text-rose-600">
-              <Heart size={16} /> Favorilerim
-            </div>
-            <h2 className="text-2xl font-black">Favori ilanların</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Kaydettiğin ilanlar burada görünür.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadFavorites}
-              disabled={loading}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm disabled:opacity-60"
-            >
-              <span className="inline-flex items-center gap-2">
-                <RefreshCw size={15} /> Yenile
-              </span>
-            </button>
-
-            <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
-              <X />
-            </button>
-          </div>
-        </div>
-
-        {loading && (
-          <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-500 ring-1 ring-slate-200">
-            Favorilerin yükleniyor...
-          </div>
-        )}
-
-        {!loading && errorText && (
-          <div className="rounded-3xl bg-red-50 p-6 text-sm font-semibold text-red-700 ring-1 ring-red-100">
-            {errorText}
-          </div>
-        )}
-
-        {!loading && !errorText && items.length === 0 && (
-          <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-500 ring-1 ring-slate-200">
-            Henüz favori ilan yok.
-          </div>
-        )}
-
-        {!loading && !errorText && items.length > 0 && (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => {
-              const image = getListingImage(item);
-
-              return (
-                <div key={item.id} className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
-                  <div className="relative h-48 bg-slate-100">
-                    {image ? (
-                      <img src={image} alt={item.title || 'Favori ilan'} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                        Görsel yok
-                      </div>
-                    )}
-
-                    <div className="absolute right-3 top-3 rounded-full bg-rose-500 px-3 py-1 text-xs font-black text-white">
-                      Favori
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <p className="text-xs font-bold uppercase text-slate-500">
-                      {item.category || 'Kategori'}
-                    </p>
-
-                    <h3 className="mt-2 line-clamp-2 text-lg font-black text-slate-950">
-                      {item.title || 'Başlıksız ilan'}
-                    </h3>
-
-                    <p className="mt-2 text-xl font-black text-slate-950">
-                      {formatPrice(item)}
-                    </p>
-
-                    <p className="mt-3 flex items-center gap-1 text-sm text-slate-500">
-                      <MapPin size={15} />
-                      {item.location || 'Konum yok'}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+    <ModalShell eyebrow="♥ Favorilerim" title="Favori ilanların" subtitle="Kaydettiğin ilanlar burada görünür." onClose={onClose} action={user?.id ? <button onClick={load} className="hidden items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black ring-1 ring-slate-200 md:inline-flex"><RefreshCw size={16}/> Yenile</button> : null}>
+      {!user?.id ? <LoginRequired title="Favorilerini görmek için giriş yap" text="Favori ilanlar hesabına bağlı tutulur." /> : loading ? <SkeletonBox lines={3} /> : error ? <ErrorState message={error} onRetry={load} /> : items.length === 0 ? <EmptyState icon={Heart} title="Henüz favori ilan yok" text="Beğendiğin ilanları kalp ikonuyla favorilerine ekleyebilirsin." /> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{items.map((item) => <ListingCard key={item.id} item={item} onClick={() => onOpenListing?.(item)} />)}</div>}
+    </ModalShell>
   );
 }

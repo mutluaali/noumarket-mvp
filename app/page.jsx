@@ -19,6 +19,7 @@ import { getOrCreateConversation } from '@/lib/messages';
 import { searchListings } from '@/lib/search';
 import { demoListings, formatXpf } from '@/lib/demoData';
 import { supabase } from '@/lib/supabase';
+import { withTimeout } from '@/lib/safeAsync';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
 import { CATEGORY_TREE, buildCategoryLabel, findCategoryNode, getDescendantCategoryIds } from '@/lib/categorySchema';
@@ -72,22 +73,28 @@ export default function HomePage(){
      return;
    }
 
-   const nextProfile = await getCurrentProfile(currentUser.id);
-   setProfile(nextProfile);
-   setIsAdmin(userIsAdmin(nextProfile));
+   try {
+     const nextProfile = await withTimeout(getCurrentProfile(currentUser.id), 8000, 'Profil bilgisi zaman aşımına uğradı');
+     setProfile(nextProfile);
+     setIsAdmin(userIsAdmin(nextProfile));
+   } catch (error) {
+     console.error('refreshProfile:', error);
+     setProfile(null);
+     setIsAdmin(false);
+   }
  }
 
  async function refreshListings(){
    setLoadingListings(true);
    try{
      const data = showAdmin && isAdmin
-       ? await getAdminListings()
-       : await searchListings({ query, category, location, minPrice, maxPrice, sort });
+       ? await withTimeout(getAdminListings(), 8000, 'Admin ilanları zaman aşımına uğradı')
+       : await withTimeout(searchListings({ query, category, location, minPrice, maxPrice, sort }), 8000, 'İlan araması zaman aşımına uğradı');
      setListings(data.map(normalizeListing));
    }catch(error){
      console.error(error);
      try {
-       const fallback = showAdmin && isAdmin ? await getAdminListings() : await getApprovedListings();
+       const fallback = showAdmin && isAdmin ? await withTimeout(getAdminListings(), 5000, 'Admin yedek sorgusu zaman aşımına uğradı') : await withTimeout(getApprovedListings(), 5000, 'Yedek ilan sorgusu zaman aşımına uğradı');
        setListings(fallback.map(normalizeListing));
      } catch {
        setListings(demoListings);
@@ -103,28 +110,44 @@ export default function HomePage(){
      return;
    }
 
-   const { count, error } = await supabase
-     .from('notifications')
-     .select('id', { count: 'exact', head: true })
-     .eq('user_id', currentUser.id)
-     .eq('is_read', false);
+   try {
+     const { count, error } = await withTimeout(
+       supabase
+         .from('notifications')
+         .select('id', { count: 'exact', head: true })
+         .eq('user_id', currentUser.id)
+         .eq('is_read', false),
+       6000,
+       'Bildirim sayısı zaman aşımına uğradı'
+     );
 
-   if(error){
-     console.error(error);
+     if(error) throw error;
+     setNotificationCount(count || 0);
+   } catch (error) {
+     console.error('refreshNotifications:', error);
      setNotificationCount(0);
-     return;
    }
-
-   setNotificationCount(count || 0);
  }
 
  useEffect(()=>{
-   supabase.auth.getUser().then(async ({data})=>{
-     const currentUser = data.user ?? null;
-     setUser(currentUser);
-     await refreshProfile(currentUser);
-     await refreshNotifications(currentUser);
-   });
+   let mounted = true;
+   withTimeout(supabase.auth.getUser(), 6000, 'Auth kontrolü zaman aşımına uğradı')
+     .then(async ({data})=>{
+       if(!mounted) return;
+       const currentUser = data.user ?? null;
+       setUser(currentUser);
+       await refreshProfile(currentUser);
+       await refreshNotifications(currentUser);
+     })
+     .catch((error)=>{
+       console.error('auth init:', error);
+       if(mounted){
+         setUser(null);
+         setProfile(null);
+         setIsAdmin(false);
+         setNotificationCount(0);
+       }
+     });
 
    const {data:listener}=supabase.auth.onAuthStateChange(async (_event,session)=>{
      const currentUser = session?.user ?? null;
@@ -133,7 +156,7 @@ export default function HomePage(){
      await refreshNotifications(currentUser);
    });
 
-   return ()=>listener.subscription.unsubscribe();
+   return ()=>{ mounted = false; listener.subscription.unsubscribe(); };
  },[]);
 
  useEffect(()=>{refreshListings()},[showAdmin,isAdmin]);
@@ -373,9 +396,23 @@ export default function HomePage(){
           </div>
           {isAdmin && <button onClick={()=>setShowAdmin(true)} className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700 ring-1 ring-amber-200">{pending.length} onay bekliyor</button>}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>) }
-        </div>
+        {loadingListings ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="h-[310px] animate-pulse rounded-3xl bg-slate-100 ring-1 ring-slate-200" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
+            <div className="text-lg font-black text-slate-900">Bu filtrelerde ilan bulunamadı</div>
+            <p className="mt-2 text-sm text-slate-500">Kategori veya fiyat filtresini genişletip tekrar dene.</p>
+            <button onClick={() => { setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }} className="mt-5 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white">Filtreleri temizle</button>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>) }
+          </div>
+        )}
       </section>
     </div>
   </main>
