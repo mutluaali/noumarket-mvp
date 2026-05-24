@@ -1,240 +1,245 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { X, ShieldCheck, RefreshCw, Crown, AlertTriangle, CreditCard, Users, Eye, CheckCircle2, Ban, Trash2, Star, BarChart3 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import SeedMarketplacePanel from '@/components/SeedMarketplacePanel';
-import GrowthAnalyticsPanel from '@/components/GrowthAnalyticsPanel';
-import ModerationQualityPanel from '@/components/ModerationQualityPanel';
-import ProductAnalyticsPanel from '@/components/ProductAnalyticsPanel';
+import { useMemo, useState } from 'react';
+import { X, CheckCircle2, XCircle, Trash2, Crown, Eye, Search, ShieldAlert, BarChart3, Clock, UserRound, Filter, AlertTriangle } from 'lucide-react';
 
-function money(amount, currency = 'XPF') {
-  return `${Number(amount || 0).toLocaleString('fr-FR')} ${currency}`;
+const statusLabels = {
+  all: 'Tümü',
+  pending: 'Onay bekliyor',
+  approved: 'Yayında',
+  rejected: 'Reddedildi',
+};
+
+function formatDate(value) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
-function statusBadge(status) {
+function statusClass(status) {
   if (status === 'approved') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
   if (status === 'pending') return 'bg-amber-50 text-amber-700 ring-amber-200';
-  if (status === 'rejected') return 'bg-red-50 text-red-700 ring-red-200';
-  if (status === 'paid') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-  if (status === 'open') return 'bg-red-50 text-red-700 ring-red-200';
-  if (status === 'resolved') return 'bg-slate-100 text-slate-700 ring-slate-200';
-  return 'bg-slate-50 text-slate-700 ring-slate-200';
+  if (status === 'rejected') return 'bg-rose-50 text-rose-700 ring-rose-200';
+  return 'bg-slate-100 text-slate-600 ring-slate-200';
 }
 
-function MetricCard({ icon: Icon, label, value, hint }) {
+function AdminStat({ icon: Icon, label, value, hint }) {
   return (
     <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-      <div className="flex items-center gap-3">
-        <div className="rounded-2xl bg-slate-950 p-3 text-white"><Icon size={18} /></div>
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
-          <p className="text-2xl font-black text-slate-950">{value}</p>
-          {hint && <p className="mt-1 text-xs font-semibold text-slate-500">{hint}</p>}
+      <div className="flex items-center justify-between gap-3">
+        <div className="rounded-2xl bg-slate-100 p-3"><Icon size={18} /></div>
+        <div className="text-right">
+          <div className="text-2xl font-black">{value}</div>
+          <div className="text-xs font-bold text-slate-500">{label}</div>
         </div>
       </div>
+      {hint && <p className="mt-3 text-xs leading-5 text-slate-500">{hint}</p>}
     </div>
   );
 }
 
-async function getToken() {
-  const { data } = await supabase.auth.getSession();
-  return data?.session?.access_token || null;
-}
+export default function AdminPanel({ listings = [], onApprove, onReject, onDelete, onFeature, onClose }) {
+  const [status, setStatus] = useState('pending');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [rejectNote, setRejectNote] = useState('');
 
-export default function AdminPanel({ listings, onApprove, onReject, onDelete, onFeature, onClose }) {
-  const [tab, setTab] = useState('overview');
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [errorText, setErrorText] = useState('');
-  const [busyReportId, setBusyReportId] = useState('');
+  const stats = useMemo(() => {
+    const total = listings.length;
+    const pending = listings.filter((item) => item.status === 'pending').length;
+    const approved = listings.filter((item) => item.status === 'approved').length;
+    const rejected = listings.filter((item) => item.status === 'rejected').length;
+    const premium = listings.filter((item) => item.isFeatured).length;
+    const risky = listings.filter((item) => Number(item.trustScore || 0) < 55).length;
+    const views = listings.reduce((sum, item) => sum + Number(item.views || 0), 0);
+    return { total, pending, approved, rejected, premium, risky, views };
+  }, [listings]);
 
-  const approved = listings.filter((x) => x.status === 'approved');
-  const pending = listings.filter((x) => x.status === 'pending');
-
-  async function loadDashboard() {
-    setLoading(true);
-    setErrorText('');
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Admin verilerini almak için tekrar giriş yap.');
-      const response = await fetch('/api/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Admin dashboard yüklenemedi.');
-      setDashboard(payload);
-    } catch (error) {
-      setErrorText(error.message || 'Admin verileri yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadDashboard(); }, []);
-
-  const metrics = dashboard?.metrics || {};
-  const reports = dashboard?.reports || [];
-  const payments = dashboard?.payments || [];
-
-  const tabs = [
-    ['overview', 'Özet'],
-    ['moderation', `Onay (${pending.length})`],
-    ['reports', `Şikayetler (${metrics.openReports || 0})`],
-    ['payments', 'Ödemeler'],
-    ['analytics', 'Analytics'],
-    ['product', 'Product analytics'],
-    ['quality', 'Güvenlik kuyruğu'],
-    ['seed', 'Seed içerik'],
-  ];
-
-  async function updateReport(reportId, status) {
-    try {
-      setBusyReportId(reportId);
-      const token = await getToken();
-      const response = await fetch(`/api/admin/reports/${reportId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return listings
+      .filter((item) => status === 'all' || item.status === status)
+      .filter((item) => !q || [item.title, item.category, item.categoryLabel, item.location, item.seller, item.email, item.phone].filter(Boolean).join(' ').toLowerCase().includes(q))
+      .sort((a, b) => {
+        if (a.status === 'pending' && b.status !== 'pending') return -1;
+        if (b.status === 'pending' && a.status !== 'pending') return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
       });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || 'Şikayet güncellenemedi.');
-      await loadDashboard();
-    } catch (error) {
-      alert(error.message || 'Şikayet güncellenemedi.');
-    } finally {
-      setBusyReportId('');
-    }
+  }, [listings, status, query]);
+
+  async function rejectSelected() {
+    if (!selected) return;
+    await onReject(selected.id, rejectNote);
+    setSelected(null);
+    setRejectNote('');
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="mx-auto max-h-[92vh] max-w-7xl overflow-auto rounded-3xl bg-slate-50 p-5 shadow-2xl">
-        <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm md:p-6">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-slate-50 shadow-2xl">
+        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-5 py-4 backdrop-blur">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white"><ShieldCheck size={14} /> Operasyon paneli</div>
-            <h2 className="mt-2 text-2xl font-black">Admin paneli</h2>
-            <p className="mt-1 text-sm text-slate-500">Moderasyon, şikayet, premium ve ödeme takibi tek ekranda.</p>
+            <h2 className="text-xl font-black">Admin operasyon merkezi</h2>
+            <p className="text-sm text-slate-500">İlan onayı, risk takibi, premium yönetimi ve moderasyon</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={loadDashboard} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm"><span className="inline-flex items-center gap-2"><RefreshCw size={15} /> Yenile</span></button>
-            <button onClick={onClose} className="rounded-full bg-white p-2 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100"><X /></button>
-          </div>
+          <button onClick={onClose} className="rounded-full bg-slate-100 p-2 hover:bg-slate-200"><X size={20} /></button>
         </div>
 
-        <div className="mb-5 flex flex-wrap gap-2">
-          {tabs.map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} className={`rounded-2xl px-4 py-2 text-xs font-black ring-1 ${tab === key ? 'bg-slate-950 text-white ring-slate-950' : 'bg-white text-slate-700 ring-slate-200'}`}>{label}</button>
-          ))}
-        </div>
-
-        {errorText && <div className="mb-5 rounded-3xl bg-red-50 p-4 text-sm font-semibold text-red-700 ring-1 ring-red-100">{errorText}</div>}
-        {loading && <div className="rounded-3xl bg-white p-5 text-sm text-slate-500 ring-1 ring-slate-200">Admin metrikleri yükleniyor...</div>}
-
-        {!loading && tab === 'overview' && (
-          <div className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <MetricCard icon={BarChart3} label="Toplam ilan" value={metrics.totalListings ?? listings.length} hint={`${metrics.approvedListings ?? approved.length} yayında`} />
-              <MetricCard icon={RefreshCw} label="Onay bekleyen" value={metrics.pendingListings ?? pending.length} hint="Hızlı moderasyon şart" />
-              <MetricCard icon={Crown} label="Premium ilan" value={metrics.premiumListings ?? 0} hint="Gelir motoru" />
-              <MetricCard icon={CreditCard} label="Gelir" value={money(metrics.revenueXpf || 0)} hint="Paid Stripe orders" />
-              <MetricCard icon={AlertTriangle} label="Açık şikayet" value={metrics.openReports ?? 0} hint="Güven riski" />
-              <MetricCard icon={Users} label="Kullanıcı" value={metrics.users ?? 0} />
-              <MetricCard icon={Eye} label="Görüntülenme" value={metrics.totalViews ?? 0} />
-              <MetricCard icon={CreditCard} label="Bekleyen ödeme" value={metrics.pendingPayments ?? 0} />
-            </div>
-            <div className="rounded-3xl bg-white p-5 ring-1 ring-slate-200">
-              <h3 className="text-lg font-black">Operasyon önceliği</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Önce onay bekleyen ilanları temizle. Sonra açık şikayetleri kapat. Premium ödemelerde pending kalan kayıtlar varsa Stripe webhook/env ayarını kontrol et.</p>
-            </div>
+        <div className="p-5 md:p-7">
+          <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
+            <AdminStat icon={BarChart3} label="Toplam" value={stats.total} />
+            <AdminStat icon={Clock} label="Bekleyen" value={stats.pending} hint="Dashboard’da görünmemesi ciddi operasyon hatasıydı." />
+            <AdminStat icon={CheckCircle2} label="Yayında" value={stats.approved} />
+            <AdminStat icon={XCircle} label="Reddedildi" value={stats.rejected} />
+            <AdminStat icon={Crown} label="Premium" value={stats.premium} />
+            <AdminStat icon={ShieldAlert} label="Riskli" value={stats.risky} />
+            <AdminStat icon={Eye} label="Görüntülenme" value={stats.views} />
           </div>
-        )}
 
-        {!loading && tab === 'moderation' && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-3xl bg-white p-4 ring-1 ring-slate-200">
-              <h3 className="mb-3 font-black">Onay bekleyen ilanlar</h3>
-              {pending.length === 0 && <p className="text-sm text-slate-500">Onay bekleyen ilan yok.</p>}
-              <div className="space-y-3">
-                {pending.map((item) => (
-                  <div key={item.id} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                    <div className="font-black">{item.title}</div>
-                    <div className="mt-1 text-sm text-slate-500">{item.category} · {item.location} · {item.priceText}</div>
-                    <div className="mt-3 flex gap-2"><button onClick={() => onApprove(item.id)} className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white"><CheckCircle2 size={13} className="inline" /> Onayla</button><button onClick={() => onReject(item.id)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold"><Ban size={13} className="inline" /> Reddet</button></div>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <section className="rounded-3xl bg-white p-4 ring-1 ring-slate-200">
-              <h3 className="mb-3 font-black">Yayındaki ilanlar</h3>
-              <div className="space-y-3">
-                {approved.slice(0, 80).map((item) => (
-                  <div key={item.id} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
-                    <div className="font-black">{item.title}</div>
-                    <div className="mt-1 text-sm text-slate-500">{item.category} · {item.location} · {item.priceText}</div>
-                    <div className="mt-3 flex gap-2"><button onClick={() => onFeature(item.id)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold"><Star size={13} className="inline" /> {item.isFeatured ? 'Öne çıkarmayı kaldır' : 'Öne çıkar'}</button><button onClick={() => onDelete(item.id)} className="rounded-xl border border-red-100 bg-white px-3 py-2 text-xs font-bold text-red-600"><Trash2 size={13} className="inline" /> Sil</button></div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {!loading && tab === 'reports' && (
-          <div className="space-y-3">
-            {reports.length === 0 && <div className="rounded-3xl bg-white p-5 text-sm text-slate-500 ring-1 ring-slate-200">Şikayet kaydı yok.</div>}
-            {reports.map((report) => (
-              <div key={report.id} className="rounded-3xl bg-white p-4 ring-1 ring-slate-200">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${statusBadge(report.status || 'open')}`}>{report.status || 'open'}</span>
-                    <h3 className="mt-3 font-black">{report.reason || 'Şikayet'}</h3>
-                    <p className="mt-1 text-sm text-slate-600">{report.details || 'Detay yok.'}</p>
-                    <p className="mt-2 text-xs text-slate-500">İlan: {report.listing_id} · {new Date(report.created_at).toLocaleString('tr-TR')}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button disabled={busyReportId === report.id} onClick={() => updateReport(report.id, 'reviewing')} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold">İncelemede</button>
-                    <button disabled={busyReportId === report.id} onClick={() => updateReport(report.id, 'resolved')} className="rounded-2xl bg-slate-950 px-3 py-2 text-xs font-bold text-white">Çözüldü</button>
-                    <button disabled={busyReportId === report.id} onClick={() => updateReport(report.id, 'dismissed')} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold">Kapat</button>
-                  </div>
+          <div className="mt-6 grid gap-4 lg:grid-cols-[360px_1fr]">
+            <aside className="space-y-4">
+              <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="mb-3 flex items-center gap-2 text-sm font-black"><Filter size={17} /> Filtreler</div>
+                <div className="grid gap-2">
+                  {Object.entries(statusLabels).map(([key, label]) => (
+                    <button key={key} onClick={() => setStatus(key)} className={`rounded-2xl px-4 py-3 text-left text-sm font-bold ${status === key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
 
-        {!loading && tab === 'analytics' && (
-          <GrowthAnalyticsPanel dashboard={dashboard} />
-        )}
-
-        {!loading && tab === 'product' && (
-          <ProductAnalyticsPanel dashboard={dashboard} />
-        )}
-
-        {!loading && tab === 'quality' && (
-          <ModerationQualityPanel />
-        )}
-
-        {!loading && tab === 'seed' && (
-          <SeedMarketplacePanel onSeeded={() => { loadDashboard(); }} />
-        )}
-
-        {!loading && tab === 'payments' && (
-          <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-slate-200">
-            <div className="grid grid-cols-5 gap-3 border-b border-slate-200 bg-slate-50 p-3 text-xs font-black uppercase text-slate-500">
-              <div>Plan</div><div>Tutar</div><div>Durum</div><div>Tarih</div><div>Session</div>
-            </div>
-            {payments.length === 0 && <div className="p-5 text-sm text-slate-500">Ödeme kaydı yok.</div>}
-            {payments.map((payment) => (
-              <div key={payment.id} className="grid grid-cols-5 gap-3 border-b border-slate-100 p-3 text-sm last:border-0">
-                <div className="font-bold">{payment.plan || 'premium'}</div>
-                <div>{money(payment.amount, payment.currency)}</div>
-                <div><span className={`rounded-full px-2 py-1 text-xs font-black ring-1 ${statusBadge(payment.status)}`}>{payment.status}</span></div>
-                <div className="text-slate-500">{payment.created_at ? new Date(payment.created_at).toLocaleDateString('tr-TR') : '-'}</div>
-                <div className="truncate text-xs text-slate-400">{payment.provider_session_id || '-'}</div>
+              <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-3">
+                  <Search size={18} className="text-slate-400" />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Başlık, satıcı, kategori ara" className="w-full bg-transparent text-sm outline-none" />
+                </div>
               </div>
-            ))}
+
+              <div className="rounded-3xl bg-slate-900 p-5 text-white">
+                <div className="flex items-center gap-2 text-sm font-black"><AlertTriangle size={18} /> Operasyon notu</div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">Onay bekleyen ilan detayına girilemiyorsa admin panel işlevsizdir. Bu sürümde her ilan tek tıkla detay/önizleme açar.</p>
+              </div>
+            </aside>
+
+            <section className="rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
+              <div className="border-b border-slate-200 p-4">
+                <div className="text-sm font-black">{filtered.length} ilan listeleniyor</div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {filtered.map((item) => (
+                  <div key={item.id} className="grid gap-4 p-4 md:grid-cols-[92px_1fr_auto] md:items-center">
+                    <button onClick={() => setSelected(item)} className="aspect-square overflow-hidden rounded-2xl bg-slate-100">
+                      <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                    </button>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${statusClass(item.status)}`}>{statusLabels[item.status] || item.status}</span>
+                        {item.isFeatured && <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-200">Premium</span>}
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">Güven: {item.trustScore || 0}/100</span>
+                      </div>
+                      <button onClick={() => setSelected(item)} className="mt-2 block text-left text-lg font-black hover:underline">{item.title}</button>
+                      <div className="mt-1 text-sm text-slate-500">{item.categoryLabel || item.category} • {item.location} • {item.priceText}</div>
+                      <div className="mt-1 text-xs text-slate-400">{formatDate(item.created_at)}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 md:justify-end">
+                      <button onClick={() => setSelected(item)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold">Detay</button>
+                      {item.status !== 'approved' && <button onClick={() => onApprove(item.id)} className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Onayla</button>}
+                      {item.status !== 'rejected' && <button onClick={() => { setSelected(item); setRejectNote(''); }} className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-bold text-white">Reddet</button>}
+                      <button onClick={() => onFeature(item.id)} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white">Premium</button>
+                    </div>
+                  </div>
+                ))}
+
+                {filtered.length === 0 && (
+                  <div className="p-10 text-center text-sm font-bold text-slate-400">Bu filtrede ilan yok.</div>
+                )}
+              </div>
+            </section>
           </div>
-        )}
+        </div>
       </div>
+
+      {selected && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto bg-slate-950/70 p-3 backdrop-blur-sm md:p-6">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-xl font-black">İlan detay / moderasyon</h3>
+                <p className="text-sm text-slate-500">Admin burada ilanın tamamını görür ve karar verir.</p>
+              </div>
+              <button onClick={() => setSelected(null)} className="rounded-full bg-slate-100 p-2"><X size={20} /></button>
+            </div>
+
+            <div className="grid gap-0 lg:grid-cols-[1fr_340px]">
+              <div className="p-5">
+                <div className="overflow-hidden rounded-3xl bg-slate-100">
+                  <img src={selected.image} alt={selected.title} className="max-h-[420px] w-full object-cover" />
+                </div>
+                <div className="mt-5">
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${statusClass(selected.status)}`}>{statusLabels[selected.status] || selected.status}</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{selected.categoryLabel || selected.category}</span>
+                  </div>
+                  <h4 className="mt-3 text-2xl font-black">{selected.title}</h4>
+                  <div className="mt-2 text-2xl font-black text-slate-900">{selected.priceText}</div>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-600">{selected.description || 'Açıklama yok.'}</p>
+                </div>
+
+                {selected.attributes && Object.keys(selected.attributes).length > 0 && (
+                  <div className="mt-5 rounded-3xl bg-slate-50 p-4 ring-1 ring-slate-200">
+                    <div className="mb-3 text-sm font-black">Kategori alanları</div>
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {Object.entries(selected.attributes).filter(([, value]) => Boolean(value)).map(([key, value]) => (
+                        <div key={key} className="rounded-2xl bg-white p-3 text-sm ring-1 ring-slate-100">
+                          <div className="text-xs font-bold text-slate-400">{key}</div>
+                          <div className="font-bold text-slate-700">{String(value)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <aside className="border-t border-slate-200 bg-slate-50 p-5 lg:border-l lg:border-t-0">
+                <div className="space-y-4">
+                  <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                    <div className="flex items-center gap-2 text-sm font-black"><UserRound size={18} /> Satıcı</div>
+                    <div className="mt-3 text-sm text-slate-600">
+                      <div><strong>Ad:</strong> {selected.seller || '-'}</div>
+                      <div><strong>Telefon:</strong> {selected.phone || '-'}</div>
+                      <div><strong>Email:</strong> {selected.email || '-'}</div>
+                      <div><strong>Konum:</strong> {selected.location || '-'}</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-black">Güven / Risk skoru</div>
+                      <div className="text-xl font-black">{selected.trustScore || 0}</div>
+                    </div>
+                    <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${selected.trustScore || 0}%` }} />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-500">55 altı skorlar manuel kontrol gerektirir.</p>
+                  </div>
+
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-bold text-slate-500">Red notu</span>
+                    <textarea value={rejectNote} onChange={(event) => setRejectNote(event.target.value)} rows={3} placeholder="Eksik fotoğraf, şüpheli fiyat, yasaklı içerik..." className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none" />
+                  </label>
+
+                  <div className="grid gap-2">
+                    <button onClick={async () => { await onApprove(selected.id); setSelected(null); }} className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white"><CheckCircle2 className="mr-2 inline" size={17} /> Onayla</button>
+                    <button onClick={rejectSelected} className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-black text-white"><XCircle className="mr-2 inline" size={17} /> Reddet</button>
+                    <button onClick={async () => { await onFeature(selected.id); setSelected(null); }} className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white"><Crown className="mr-2 inline" size={17} /> Premium değiştir</button>
+                    <button onClick={async () => { if (confirm('Bu ilan silinsin mi?')) { await onDelete(selected.id); setSelected(null); } }} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700"><Trash2 className="mr-2 inline" size={17} /> Sil</button>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

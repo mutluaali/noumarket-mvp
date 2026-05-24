@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ShieldCheck, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, ShieldCheck, Eye, Crown, BarChart3, Globe2, Plus, CreditCard, Home, Grid2X2, MessageCircle, UserRound, Bell } from 'lucide-react';
 import Header from '@/components/Header';
 import AuthModal from '@/components/AuthModal';
 import ListingCard from '@/components/ListingCard';
@@ -15,36 +14,31 @@ import ChatModal from '@/components/ChatModal';
 import MessagesModal from '@/components/MessagesModal';
 import FavoritesModal from '@/components/FavoritesModal';
 import NotificationsModal from '@/components/NotificationsModal';
-import OffersModal from '@/components/OffersModal';
-import SavedSearchesModal from '@/components/SavedSearchesModal';
-import ProfileModal from '@/components/ProfileModal';
-import ResultsToolbar from '@/components/ResultsToolbar';
-import ListingListRow from '@/components/ListingListRow';
-import CompareBar from '@/components/CompareBar';
-import CompareModal from '@/components/CompareModal';
-import TrustStrip from '@/components/TrustStrip';
-import MarketplaceDiscovery from '@/components/MarketplaceDiscovery';
-import BottomNav from '@/components/BottomNav';
-import FeedbackModal from '@/components/FeedbackModal';
-import InstallAppPrompt from '@/components/InstallAppPrompt';
-import OnboardingModal from '@/components/OnboardingModal';
-import ActivationNudges from '@/components/ActivationNudges';
-import DeployChecklist from '@/components/DeployChecklist';
-import ListingSkeleton from '@/components/ListingSkeleton';
-import EmptyState from '@/components/EmptyState';
-import RecentlyViewed from '@/components/RecentlyViewed';
-import { createSavedSearch } from '@/lib/savedSearches';
-import { hasCompletedOnboarding, markActivationEvent } from '@/lib/onboarding';
+import SearchFilters from '@/components/SearchFilters';
 import { getOrCreateConversation } from '@/lib/messages';
-import { getFavoriteIds, toggleFavorite } from '@/lib/favorites';
+import { searchListings } from '@/lib/search';
 import { demoListings, formatXpf } from '@/lib/demoData';
-import { supabase, getStableSession } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
-import { trackEvent } from '@/lib/analytics';
+import { CATEGORY_TREE, buildCategoryLabel, findCategoryNode, getDescendantCategoryIds } from '@/lib/categorySchema';
+import MarketplaceSidebar from '@/components/MarketplaceSidebar';
+
+function BottomNav({ onCreate, onMessages, onMyListings, onNotifications }) {
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-2xl backdrop-blur md:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-1 text-[11px] font-bold text-slate-600">
+        <button className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><Home size={18} /> Ana</button>
+        <button onClick={() => window.scrollTo({ top: 520, behavior: 'smooth' })} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><Grid2X2 size={18} /> Kategori</button>
+        <button onClick={onCreate} className="-mt-5 flex flex-col items-center gap-1 rounded-2xl bg-slate-900 px-2 py-3 text-white shadow-lg"><Plus size={22} /> İlan ver</button>
+        <button onClick={onMessages} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><MessageCircle size={18} /> Mesaj</button>
+        <button onClick={onMyListings || onNotifications} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><UserRound size={18} /> Profil</button>
+      </div>
+    </nav>
+  );
+}
 
 export default function HomePage(){
- const router = useRouter();
  const [listings,setListings]=useState([]);
  const [loadingListings,setLoadingListings]=useState(true);
  const [user,setUser]=useState(null);
@@ -52,14 +46,11 @@ export default function HomePage(){
  const [isAdmin,setIsAdmin]=useState(false);
  const [query,setQuery]=useState('');
  const [category,setCategory]=useState('Tümü');
- const [subcategory,setSubcategory]=useState('Tümü');
+ const [selectedCategoryId,setSelectedCategoryId]=useState(null);
  const [location,setLocation]=useState('Tümü');
  const [minPrice,setMinPrice]=useState('');
  const [maxPrice,setMaxPrice]=useState('');
  const [sort,setSort]=useState('newest');
- const [viewMode,setViewMode]=useState('gallery');
- const [autoSearch,setAutoSearch]=useState(true);
- const [mobileFiltersOpen,setMobileFiltersOpen]=useState(false);
  const [selected,setSelected]=useState(null);
  const [showAuth,setShowAuth]=useState(false);
  const [showCreate,setShowCreate]=useState(false);
@@ -69,68 +60,9 @@ export default function HomePage(){
  const [showMessages,setShowMessages]=useState(false);
  const [showFavorites,setShowFavorites]=useState(false);
  const [showNotifications,setShowNotifications]=useState(false);
- const [showOffers,setShowOffers]=useState(false);
- const [showSavedSearches,setShowSavedSearches]=useState(false);
- const [showProfile,setShowProfile]=useState(false);
- const [showFeedback,setShowFeedback]=useState(false);
- const [showOnboarding,setShowOnboarding]=useState(false);
  const [notificationCount,setNotificationCount]=useState(0);
- const [favoriteIds,setFavoriteIds]=useState([]);
- const [compareIds,setCompareIds]=useState([]);
- const [showCompare,setShowCompare]=useState(false);
- const latestListingsRequest = useRef(0);
- const mountedRef = useRef(true);
-
- useEffect(() => {
-   mountedRef.current = true;
-   return () => { mountedRef.current = false; };
- }, []);
-
- // Eski PWA/service-worker cache'i production'da eski bundle çalıştırıyordu.
- // Bu temizlik bir kez yapılır ve eski JS/cache kilitlerini kırar.
- useEffect(() => {
-   if (typeof window === 'undefined') return;
-
-   const cleanupKey = 'noumarket_cache_cleanup_v4';
-
-   async function cleanupOldCaches() {
-     if (window.localStorage.getItem(cleanupKey) === 'done') return;
-
-     window.localStorage.setItem(cleanupKey, 'done');
-
-     try {
-       if ('serviceWorker' in navigator) {
-         const registrations = await navigator.serviceWorker.getRegistrations();
-         await Promise.all(registrations.map((registration) => registration.unregister()));
-       }
-
-       if ('caches' in window) {
-         const cacheNames = await caches.keys();
-         await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-       }
-     } catch (error) {
-       console.error('cache cleanup error:', error);
-     }
-
-     window.location.reload();
-   }
-
-   cleanupOldCaches();
- }, []);
-
- useEffect(() => {
-   if (typeof window === 'undefined') return;
-   if (!hasCompletedOnboarding()) {
-     const timer = setTimeout(() => setShowOnboarding(true), 700);
-     return () => clearTimeout(timer);
-   }
- }, []);
-
- useEffect(() => {
-   trackEvent('page_view', { source: 'home' }, user?.id || null);
- }, [user?.id]);
-
  const [activeConversation,setActiveConversation]=useState(null);
+ const listingsSectionRef = useRef(null);
 
  async function refreshProfile(currentUser){
    if(!currentUser?.id){
@@ -145,46 +77,28 @@ export default function HomePage(){
    setIsAdmin(userIsAdmin(nextProfile));
  }
 
- const refreshListings = useCallback(async () => {
-   const requestId = latestListingsRequest.current + 1;
-   latestListingsRequest.current = requestId;
-
-   if (mountedRef.current) setLoadingListings(true);
-
+ async function refreshListings(){
+   setLoadingListings(true);
    try{
      const data = showAdmin && isAdmin
        ? await getAdminListings()
-       : await getApprovedListings({ query, category, location, minPrice, maxPrice, sort });
-
-     if (!mountedRef.current || requestId !== latestListingsRequest.current) return;
-     setListings((data || []).map(normalizeListing));
+       : await searchListings({ query, category, location, minPrice, maxPrice, sort });
+     setListings(data.map(normalizeListing));
    }catch(error){
-     if (!mountedRef.current || requestId !== latestListingsRequest.current) return;
-     console.warn('refreshListings warning:', error);
-     setListings([]);
-   }finally{
-     if (mountedRef.current && requestId === latestListingsRequest.current) {
-       setLoadingListings(false);
+     console.error(error);
+     try {
+       const fallback = showAdmin && isAdmin ? await getAdminListings() : await getApprovedListings();
+       setListings(fallback.map(normalizeListing));
+     } catch {
+       setListings(demoListings);
      }
-   }
- }, [showAdmin, isAdmin, query, category, location, minPrice, maxPrice, sort]);
-
- async function refreshFavorites(currentUser = user){
-   if(!currentUser?.id){
-     setFavoriteIds([]);
-     return;
-   }
-
-   try{
-     setFavoriteIds(await getFavoriteIds(currentUser.id));
-   }catch(error){
-     console.error('favorite refresh error:', error);
-     setFavoriteIds([]);
+   }finally{
+     setLoadingListings(false);
    }
  }
 
  async function refreshNotifications(currentUser = user){
-   if(!currentUser?.id || !supabase){
+   if(!currentUser?.id){
      setNotificationCount(0);
      return;
    }
@@ -196,7 +110,7 @@ export default function HomePage(){
      .eq('is_read', false);
 
    if(error){
-     console.warn(error);
+     console.error(error);
      setNotificationCount(0);
      return;
    }
@@ -205,191 +119,60 @@ export default function HomePage(){
  }
 
  useEffect(()=>{
-   let alive = true;
+   supabase.auth.getUser().then(async ({data})=>{
+     const currentUser = data.user ?? null;
+     setUser(currentUser);
+     await refreshProfile(currentUser);
+     await refreshNotifications(currentUser);
+   });
 
-   async function bootAuth(){
-     try{
-       const session = await getStableSession();
-       const currentUser = session?.user ?? null;
+   const {data:listener}=supabase.auth.onAuthStateChange(async (_event,session)=>{
+     const currentUser = session?.user ?? null;
+     setUser(currentUser);
+     await refreshProfile(currentUser);
+     await refreshNotifications(currentUser);
+   });
 
-       if(!alive) return;
-
-       setUser(currentUser);
-       await refreshProfile(currentUser);
-       await refreshNotifications(currentUser);
-       await refreshFavorites(currentUser);
-       await refreshListings();
-     }catch(error){
-       console.warn('auth boot warning:', error);
-       if(!alive) return;
-       setUser(null);
-       setProfile(null);
-       setIsAdmin(false);
-       await refreshListings();
-     }
-   }
-
-   bootAuth();
-
-   const {data:listener} = supabase
-     ? supabase.auth.onAuthStateChange(async (_event,session)=>{
-         const currentUser = session?.user ?? null;
-
-         setUser(currentUser);
-         await refreshProfile(currentUser);
-         await refreshNotifications(currentUser);
-         await refreshFavorites(currentUser);
-         await refreshListings();
-       })
-     : { data: null };
-
-   return ()=>{
-     alive = false;
-     listener?.subscription?.unsubscribe?.();
-   };
+   return ()=>listener.subscription.unsubscribe();
  },[]);
 
- useEffect(()=>{
-   if(showAdmin && isAdmin) refreshListings();
- }, [showAdmin, isAdmin, refreshListings]);
+ useEffect(()=>{refreshListings()},[showAdmin,isAdmin]);
 
- useEffect(()=>{
-   if(!autoSearch) return;
-   if(showAdmin && isAdmin) return;
-   const timer = setTimeout(()=>refreshListings(), 350);
-   return ()=>clearTimeout(timer);
- },[query,category,subcategory,location,minPrice,maxPrice,sort,autoSearch,showAdmin,isAdmin,refreshListings]);
-
- const approved = useMemo(() => listings.filter((x) => x.status === 'approved'), [listings]);
- const pending = useMemo(() => listings.filter((x) => x.status === 'pending'), [listings]);
- const locations = useMemo(() => ['Tümü', ...Array.from(new Set(approved.map((x) => x.location).filter(Boolean)))], [approved]);
+ const approved=listings.filter(x=>x.status==='approved');
+ const pending=listings.filter(x=>x.status==='pending');
+ const locations=['Tümü',...Array.from(new Set(approved.map(x=>x.location).filter(Boolean)))];
 
  const stats=useMemo(()=>{
    const totalViews=approved.reduce((a,x)=>a+(x.views||0),0);
    const featured=approved.filter(x=>x.isFeatured).length;
-   return {totalViews,featured,estimatedRevenue:featured*1500};
- },[approved]);
+   const risky=listings.filter(x=>Number(x.trustScore||0)<55).length;
+   return {totalViews,featured,estimatedRevenue:featured*1500,risky};
+ },[approved,listings]);
 
- function clearFilters(){
-   setQuery('');
-   setCategory('Tümü');
-   setSubcategory('Tümü');
-   setLocation('Tümü');
-   setMinPrice('');
-   setMaxPrice('');
-   setSort('newest');
+ const selectedCategory = useMemo(() => selectedCategoryId ? findCategoryNode(selectedCategoryId) : null, [selectedCategoryId]);
+ const selectedPath = selectedCategory?.path || [];
+ const activeSubcategoryOptions = useMemo(() => {
+   if(!selectedCategory) return [];
+   const node = selectedCategory.node;
+   if(node.children?.length) return node.children;
+   const parent = selectedPath[selectedPath.length - 2];
+   return parent?.children || [];
+ }, [selectedCategory, selectedPath]);
+ const selectedCategoryLabel = selectedPath.map(x => x.label).join(' > ');
+
+ function categoryMatchesListing(item){
+   if(!selectedCategoryId) return true;
+   const allowedIds = new Set(getDescendantCategoryIds(selectedCategoryId));
+   const text = [item.category, item.categoryLabel, item.brand, item.model].filter(Boolean).join(' ').toLowerCase();
+   const labels = selectedPath.map(x => x.label.toLowerCase());
+   const selectedNodeLabel = selectedCategory?.node?.label?.toLowerCase();
+   return allowedIds.has(item.categoryId)
+     || allowedIds.has(item.subcategoryId)
+     || (selectedNodeLabel && text.includes(selectedNodeLabel))
+     || labels.some(label => text.includes(label));
  }
 
- async function handleSaveSearch(){
-   if(!user){
-     setShowAuth(true);
-     alert('Arama kaydetmek için önce giriş yapmalısın.');
-     return;
-   }
-
-   try{
-     await createSavedSearch(user.id, { query, category, subcategory, location, minPrice, maxPrice, sort });
-     alert('Arama kaydedildi. Yeni eşleşmeler için alarm altyapısı hazır.');
-     setShowSavedSearches(true);
-   }catch(error){
-     alert(error.message || 'Arama kaydedilemedi. Supabase SQL dosyasını çalıştırdığını kontrol et.');
-   }
- }
-
- function applySavedSearch(filters){
-   setQuery(filters.query || '');
-   setCategory(filters.category || 'Tümü');
-   setSubcategory(filters.subcategory || 'Tümü');
-   setLocation(filters.location || 'Tümü');
-   setMinPrice(filters.minPrice || '');
-   setMaxPrice(filters.maxPrice || '');
-   setSort(filters.sort || 'newest');
-   setTimeout(()=>refreshListings(), 0);
- }
-
- function applySmartSearchIntent(intent){
-   setQuery(intent.query || '');
-   setCategory(intent.category || 'Tümü');
-   setSubcategory(intent.subcategory || 'Tümü');
-   setLocation(intent.location || 'Tümü');
-   setMinPrice(intent.minPrice || '');
-   setMaxPrice(intent.maxPrice || '');
-   setSort(intent.sort || 'newest');
- }
-
- const filtered=useMemo(()=>{
-   let result = [...approved];
-
-   const normalizedQuery = query.trim().toLowerCase();
-
-   if(normalizedQuery){
-     result = result.filter((item)=>{
-       const haystack = [
-         item.title,
-         item.description,
-         item.category,
-         item.location,
-         item.seller,
-       ].join(' ').toLowerCase();
-
-       return haystack.includes(normalizedQuery);
-     });
-   }
-
-   if(category !== 'Tümü'){
-     result = result.filter((item)=>item.category === category);
-   }
-
-   if(subcategory !== 'Tümü'){
-     const normalizedSub = String(subcategory).trim().toLowerCase();
-     result = result.filter((item)=>{
-       const values = [
-         item.subcategory,
-         item.metadata?.brand,
-         item.metadata?.model,
-         item.metadata?.property_type,
-         item.metadata?.marine_type,
-       ].filter(Boolean).map((value)=>String(value).trim().toLowerCase());
-       return values.includes(normalizedSub);
-     });
-   }
-
-   if(location !== 'Tümü'){
-     result = result.filter((item)=>item.location === location);
-   }
-
-   if(minPrice){
-     const min = Number(minPrice);
-     if(!Number.isNaN(min)){
-       result = result.filter((item)=>Number(item.price || 0) >= min);
-     }
-   }
-
-   if(maxPrice){
-     const max = Number(maxPrice);
-     if(!Number.isNaN(max)){
-       result = result.filter((item)=>Number(item.price || 0) <= max);
-     }
-   }
-
-   if(sort === 'price_asc'){
-     result.sort((a,b)=>Number(a.price || 0)-Number(b.price || 0));
-   }else if(sort === 'price_low'){
-     result.sort((a,b)=>Number(a.price || 0)-Number(b.price || 0));
-   }else if(sort === 'price_desc'){
-     result.sort((a,b)=>Number(b.price || 0)-Number(a.price || 0));
-   }else if(sort === 'price_high'){
-     result.sort((a,b)=>Number(b.price || 0)-Number(a.price || 0));
-   }else if(sort === 'popular'){
-     result.sort((a,b)=>Number(b.views || 0)-Number(a.views || 0));
-   }else{
-     result.sort((a,b)=>new Date(b.created_at || 0)-new Date(a.created_at || 0));
-   }
-
-   result.sort((a,b)=>Number(b.isFeatured)-Number(a.isFeatured));
-
-   return result;
- },[approved,query,category,subcategory,location,minPrice,maxPrice,sort]);
+ const filtered=useMemo(()=>approved.filter(categoryMatchesListing),[approved, selectedCategoryId]);
 
  async function handleCreate(payload){
    if(!user){
@@ -400,57 +183,39 @@ export default function HomePage(){
    }
    try{
      await createListing({...payload,user_id:user.id});
-     await trackEvent('listing_create', { category: payload.category, location: payload.location, price: payload.price }, user.id);
      setShowCreate(false);
      alert('İlan kaydedildi. Admin onayından sonra yayına çıkacak.');
      await refreshListings();
    }catch(error){
-     console.warn(error);
-     alert(error.message || 'İlan kaydedilemedi.');
+     console.error(error);
+     alert(error.message || 'İlan kaydedilemedi. Veritabanı kolonlarını ve RLS yetkilerini kontrol et.');
    }
  }
 
  async function approve(id){try{await approveListing(id); await refreshListings()}catch(e){alert(e.message || 'Onaylama başarısız. Admin yetkisi/RLS kontrol et.')}}
- async function reject(id){try{await rejectListing(id); await refreshListings()}catch(e){alert(e.message || 'Reddetme başarısız. Admin yetkisi/RLS kontrol et.')}}
+ async function reject(id,note=''){try{await rejectListing(id,note); await refreshListings()}catch(e){alert(e.message || 'Reddetme başarısız. Admin yetkisi/RLS kontrol et.')}}
  async function del(id){try{await deleteListing(id); await refreshListings()}catch(e){alert(e.message || 'Silme başarısız. Admin yetkisi/RLS kontrol et.')}}
  async function feature(id){try{const item=listings.find(x=>x.id===id); await toggleFeaturedListing(id,!item?.isFeatured); await refreshListings()}catch(e){alert(e.message || 'Öne çıkarma başarısız. Admin yetkisi/RLS kontrol et.')}}
 
-
- function toggleCompare(listing){
-   setCompareIds((current)=>{
-     if(current.includes(listing.id)) return current.filter((id)=>id!==listing.id);
-     if(current.length >= 4){
-       alert('Karşılaştırma için en fazla 4 ilan seçebilirsin.');
-       return current;
-     }
-     return [...current, listing.id];
-   });
+ 
+ function scrollToListings(){
+   setTimeout(() => listingsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
  }
 
- const compareItems = useMemo(()=>{
-   return compareIds.map((id)=>approved.find((item)=>item.id===id)).filter(Boolean);
- },[compareIds, approved]);
-
- async function handleFavorite(listing){
-   if(!user){
-     setShowAuth(true);
-     alert('Favorilere eklemek için önce giriş yapmalısın.');
+ function handleSidebarCategory(node){
+   if(!node){
+     setSelectedCategoryId(null);
+     setCategory('Tümü');
+     setTimeout(()=>refreshListings(),0);
+     scrollToListings();
      return;
    }
-
-   const isCurrentlyFavorite = favoriteIds.includes(listing.id);
-
-   try{
-     const nextValue = await toggleFavorite(user.id, listing.id, isCurrentlyFavorite);
-     if(nextValue) markActivationEvent('favorite');
-     await trackEvent(nextValue ? 'favorite_add' : 'favorite_remove', { listing_id: listing.id, category: listing.category, price: listing.price }, user.id);
-     setFavoriteIds((current)=>{
-       if(nextValue) return Array.from(new Set([...current, listing.id]));
-       return current.filter((id)=>id!==listing.id);
-     });
-   }catch(error){
-     alert(error.message || 'Favori işlemi başarısız.');
-   }
+   const found = findCategoryNode(node.id);
+   const label = found ? found.path.map(x => x.label).join(' > ') : node.label;
+   setSelectedCategoryId(node.id);
+   setCategory(label);
+   setTimeout(()=>refreshListings(),0);
+   scrollToListings();
  }
 
  async function startChatForListing(listing){
@@ -466,284 +231,166 @@ export default function HomePage(){
    }
 
    try{
-     const conversation = await getOrCreateConversation({
-       listingId: listing.id,
-       buyerId: user.id,
-       sellerId: listing.user_id,
-     });
-     markActivationEvent('message');
-     await trackEvent('message_start', { listing_id: listing.id, seller_id: listing.user_id }, user.id);
+     const conversation = await getOrCreateConversation({ listingId: listing.id, buyerId: user.id, sellerId: listing.user_id });
      setActiveConversation(conversation);
    }catch(error){
      alert(error.message || 'Sohbet başlatılamadı.');
    }
  }
 
- return <div id="top" className="min-h-screen bg-slate-50 pb-24 text-slate-900 lg:pb-0">
+ return <div className="min-h-screen bg-slate-50 pb-24 text-slate-900 md:pb-0">
   <Header
     user={user}
     isAdmin={isAdmin}
-    onAuth={()=>{trackEvent('auth_open',{},user?.id); setShowAuth(true)}}
+    onAuth={()=>setShowAuth(true)}
     onLogout={async()=>{
-      try {
-        await Promise.race([
-          supabase.auth.signOut({ scope: 'local' }),
-          new Promise((resolve) => setTimeout(resolve, 2500)),
-        ]);
-      } catch (error) {
-        console.error('signOut error:', error);
-      }
-
-      try {
-        Object.keys(localStorage)
-          .filter((key) => key.startsWith('sb-') && key.endsWith('-auth-token'))
-          .forEach((key) => localStorage.removeItem(key));
-      } catch (error) {
-        console.error('local auth cleanup error:', error);
-      }
-
-      setUser(null);
-      setProfile(null);
-      setIsAdmin(false);
-      setShowAdmin(false);
-      setShowMyListings(false);
-      setShowMessages(false);
-      setShowFavorites(false);
-      setShowNotifications(false);
-      setShowSavedSearches(false);
-      setShowProfile(false);
-      setShowFeedback(false);
-      setNotificationCount(0);
-      setFavoriteIds([]);
-
-      window.location.reload();
+      await supabase.auth.signOut();
+      setUser(null); setProfile(null); setIsAdmin(false); setShowAdmin(false); setNotificationCount(0);
     }}
-    onCreate={()=>{trackEvent('listing_create_open',{},user?.id); setShowCreate(true)}}
-    onPricing={()=>{trackEvent('pricing_open',{},user?.id); setShowPricing(true)}}
-    onAdmin={()=>{
-      if(!isAdmin){
-        alert('Admin yetkin yok.');
-        return;
-      }
-      trackEvent('admin_open',{},user?.id);
-      setShowAdmin(true);
-    }}
+    onCreate={()=>setShowCreate(true)}
+    onPricing={()=>setShowPricing(true)}
+    onAdmin={()=>{ if(!isAdmin){ alert('Admin yetkin yok.'); return; } setShowAdmin(true); }}
     onMyListings={()=>setShowMyListings(true)}
     onMessages={()=>setShowMessages(true)}
     onFavorites={()=>setShowFavorites(true)}
     onNotifications={()=>setShowNotifications(true)}
-    onSavedSearches={()=>setShowSavedSearches(true)}
-    onProfile={()=>setShowProfile(true)}
     notificationCount={notificationCount}
-    onSearchFocus={()=>document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' })}
-    searchValue={query}
-    onSearchChange={setQuery}
-    onSearchSubmit={()=>{document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' }); trackEvent('search',{query,category,subcategory,location,minPrice,maxPrice,sort,source:'navbar'},user?.id); refreshListings();}}
   />
-  <main>
-   <section id="search" className="border-b border-slate-200 bg-white">
-    <div className="mx-auto max-w-7xl px-4 py-7 md:py-9">
-     <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-end">
-      <div className="max-w-3xl">
-       <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"><ShieldCheck size={15}/> Güvenli, sade, yerel ilan pazarı</div>
-       <h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Aradığını hızlı bul. İlanını kolay yayınla.</h1>
-       <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Arama artık navbar’da tek merkezde. Kategori ve filtreler aşağıdaki tek panelden birlikte çalışır.</p>
-      </div>
-      <div className="grid grid-cols-3 gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3 text-center">
-       <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-xl font-black text-slate-950">{approved.length}</div><div className="text-xs font-bold text-slate-500">Aktif ilan</div></div>
-       <div className="rounded-2xl bg-white p-3 ring-1 ring-slate-200"><div className="text-xl font-black text-slate-950">{stats.featured}</div><div className="text-xs font-bold text-slate-500">Premium</div></div>
-       <button type="button" onClick={()=>setMobileFiltersOpen(true)} className="rounded-2xl bg-white p-3 ring-1 ring-slate-200 md:hidden"><SlidersHorizontal className="mx-auto mb-1" size={20}/><div className="text-xs font-bold text-slate-500">Filtre</div></button>
-       <div className="hidden rounded-2xl bg-white p-3 ring-1 ring-slate-200 md:block"><div className="text-xl font-black text-slate-950">Tek</div><div className="text-xs font-bold text-slate-500">Arama</div></div>
-      </div>
-     </div>
+
+  <main className="mx-auto flex max-w-[1500px] gap-5 px-3 py-4 md:px-5">
+    <MarketplaceSidebar selectedCategoryId={selectedCategoryId} onSelectCategory={handleSidebarCategory} />
+
+    <div className="min-w-0 flex-1">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="grid md:grid-cols-[1fr_420px]">
+          <div className="p-6 md:p-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-100">
+              <ShieldCheck size={14}/> NouMarket güvenli ilan pazaryeri
+            </div>
+            <h1 className="mt-4 max-w-xl text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Aradığın her şey NouMarket'te!</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500 md:text-base">Emlak, vasıta, elektronik ve ikinci el ürünlerde hızlı arama. Sol kategori ağacıyla Sahibinden tarzı derin kategori gezintisi.</p>
+            <div className="mt-6 grid max-w-lg grid-cols-3 divide-x divide-slate-200 rounded-3xl bg-slate-50 p-4">
+              <div><div className="text-xl font-black text-blue-600">1M+</div><div className="text-xs font-bold text-slate-500">Aktif ilan</div></div>
+              <div className="pl-4"><div className="text-xl font-black text-blue-600">500K+</div><div className="text-xs font-bold text-slate-500">Mutlu kullanıcı</div></div>
+              <div className="pl-4"><div className="text-xl font-black text-blue-600">7/24</div><div className="text-xs font-bold text-slate-500">Destek</div></div>
+            </div>
+          </div>
+          <div className="hidden bg-gradient-to-br from-slate-100 to-white p-6 md:block">
+            <div className="h-full min-h-[250px] rounded-3xl bg-[url('https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=900&q=80')] bg-cover bg-center shadow-inner" />
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="grid gap-3 md:grid-cols-[1fr_190px_110px]">
+          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+            <Search className="text-slate-400" size={20}/>
+            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ne aramıştınız?" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
+          </div>
+          <select value={location} onChange={e=>setLocation(e.target.value)} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold outline-none ring-1 ring-slate-200">
+            {locations.map(x=><option key={x}>{x}</option>)}
+          </select>
+          <button onClick={refreshListings} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Ara</button>
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:hidden">
+        <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Kategoriler</h2><button onClick={()=>handleSidebarCategory(null)} className="text-xs font-black text-blue-600">Tümü</button></div>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {CATEGORY_TREE.map((item)=><button key={item.id} onClick={()=>handleSidebarCategory(item)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-black ring-1 ${selectedCategoryId===item.id?'bg-slate-900 text-white ring-slate-900':'bg-white text-slate-700 ring-slate-200'}`}>{item.icon} {item.label}</button>)}
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-black">Popüler Kategoriler</h2>
+          <button onClick={()=>handleSidebarCategory(null)} className="text-sm font-black text-blue-600">Tüm Kategoriler →</button>
+        </div>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
+          {CATEGORY_TREE.slice(0,8).map((item)=><button key={item.id} onClick={()=>handleSidebarCategory(item)} className="group rounded-3xl bg-slate-50 p-4 text-center ring-1 ring-slate-100 hover:bg-blue-50 hover:ring-blue-100"><div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-xl shadow-sm">{item.icon}</div><div className="mt-2 truncate text-xs font-black text-slate-700 group-hover:text-blue-700">{item.label}</div></button>)}
+        </div>
+      </section>
+
+      {selectedCategory && (
+        <section className="mt-4 rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Seçilen kategori</div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-black text-slate-800">
+                {selectedPath.map((item, index) => (
+                  <span key={item.id} className="inline-flex items-center gap-2">
+                    <button onClick={() => handleSidebarCategory(item)} className={index === selectedPath.length - 1 ? 'text-blue-700' : 'text-slate-500 hover:text-blue-700'}>{item.label}</button>
+                    {index < selectedPath.length - 1 ? <span className="text-slate-300">›</span> : null}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => handleSidebarCategory(null)} className="w-fit rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-200">Seçimi temizle</button>
+          </div>
+
+          {activeSubcategoryOptions.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {activeSubcategoryOptions.map((child) => (
+                <button
+                  key={child.id}
+                  onClick={() => handleSidebarCategory(child)}
+                  className={`rounded-full px-4 py-2 text-xs font-black ring-1 transition ${selectedCategoryId === child.id ? 'bg-blue-600 text-white ring-blue-600' : 'bg-blue-50 text-blue-700 ring-blue-100 hover:bg-blue-100'}`}
+                >
+                  {child.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {approved.filter(x=>x.isFeatured).length>0 && (
+        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2"><h2 className="text-lg font-black">Öne Çıkan İlanlar</h2><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">Premium</span></div>
+            <button onClick={()=>setShowPricing(true)} className="text-sm font-black text-blue-600">Tümünü Gör</button>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {approved.filter(x=>x.isFeatured).slice(0,8).map(item=><div key={item.id} className="min-w-[250px] max-w-[250px]"><ListingCard item={item} onClick={()=>setSelected(item)}/></div>)}
+          </div>
+        </section>
+      )}
+
+      <div ref={listingsSectionRef} className="scroll-mt-24" />
+      <SearchFilters
+        query={query} setQuery={setQuery} category={category} setCategory={setCategory}
+        location={location} setLocation={setLocation} minPrice={minPrice} setMinPrice={setMinPrice}
+        maxPrice={maxPrice} setMaxPrice={setMaxPrice} sort={sort} setSort={setSort}
+        locations={locations} onSearch={refreshListings}
+        onClear={()=>{ setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }}
+      />
+
+      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black">Son İlanlar</h2>
+            <p className="mt-1 text-sm text-slate-500">{loadingListings?'İlanlar yükleniyor...':`${filtered.length} ilan gösteriliyor`}{selectedCategoryLabel ? ` • ${selectedCategoryLabel}` : ''}</p>
+          </div>
+          {isAdmin && <button onClick={()=>setShowAdmin(true)} className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700 ring-1 ring-amber-200">{pending.length} onay bekliyor</button>}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>) }
+        </div>
+      </section>
     </div>
-   </section>
-
-   <TrustStrip />
-   <MarketplaceDiscovery
-    listings={approved}
-    filteredCount={filtered.length}
-    category={category}
-    setCategory={setCategory}
-    subcategory={subcategory}
-    setSubcategory={setSubcategory}
-    location={location}
-    setLocation={setLocation}
-    minPrice={minPrice}
-    setMinPrice={setMinPrice}
-    maxPrice={maxPrice}
-    setMaxPrice={setMaxPrice}
-    sort={sort}
-    setSort={setSort}
-    locations={locations}
-    onSearch={()=>{trackEvent('search',{query,category,subcategory,location,minPrice,maxPrice,sort,source:'discovery'},user?.id); refreshListings();}}
-    onClear={clearFilters}
-    onSaveSearch={handleSaveSearch}
-    mobileOpen={mobileFiltersOpen}
-    onCloseMobile={()=>setMobileFiltersOpen(false)}
-   />
-
-   <section className="mx-auto max-w-7xl px-4 py-8">
-    <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-     <div><h2 className="text-2xl font-black">Son ilanlar</h2><p className="mt-1 text-sm text-slate-500">{loadingListings?'İlanlar yükleniyor...':`${filtered.length} ilan gösteriliyor`}</p></div>
-     <button onClick={()=>setShowCreate(true)} className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-sm sm:hidden">İlan ver</button>
-    </div>
-
-    <ResultsToolbar
-      count={filtered.length}
-      viewMode={viewMode}
-      setViewMode={setViewMode}
-      autoSearch={autoSearch}
-      setAutoSearch={setAutoSearch}
-      onOpenFilters={()=>setMobileFiltersOpen(true)}
-    />
-
-    {loadingListings ? (
-     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[0,1,2,3,4,5].map((x)=><ListingSkeleton key={x}/>)}</div>
-    ) : filtered.length ? (
-     viewMode === 'list' ? (
-      <div className="grid gap-4">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
-     ) : viewMode === 'classic' ? (
-      <div className="grid gap-4 lg:grid-cols-2">{filtered.map(item=><ListingListRow key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
-     ) : (
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>{trackEvent('listing_detail_view',{listing_id:item.id,category:item.category,price:item.price},user?.id); router.push(`/ilan/${item.id}`)}} onFavorite={handleFavorite} isFavorite={favoriteIds.includes(item.id)} onCompare={toggleCompare} isCompared={compareIds.includes(item.id)}/>)}</div>
-     )
-    ) : (
-     <EmptyState onClear={clearFilters} onCreate={()=>setShowCreate(true)} />
-    )}
-   </section>
-   <DeployChecklist />
   </main>
-  {user&&(
-    <button
-      onClick={()=>setShowOffers(true)}
-      className="fixed bottom-40 right-4 z-40 hidden rounded-full bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-2xl ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-emerald-800 lg:block"
-    >
-      Tekliflerim
-    </button>
-  )}
-  <button
-    onClick={()=>setShowFeedback(true)}
-    className="fixed bottom-24 right-4 z-40 hidden rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl ring-4 ring-white/70 transition hover:-translate-y-0.5 hover:bg-slate-800 lg:block"
-  >
-    Beta feedback
-  </button>
-  <InstallAppPrompt />
-  <BottomNav
-    user={user}
-    notificationCount={notificationCount}
-    onCreate={()=>setShowCreate(true)}
-    onMessages={()=>user ? setShowMessages(true) : setShowAuth(true)}
-    onProfile={()=>user ? setShowProfile(true) : setShowAuth(true)}
-    onNotifications={()=>user ? setShowNotifications(true) : setShowAuth(true)}
-    onSearchFocus={()=>document.getElementById('discovery')?.scrollIntoView({ behavior: 'smooth' })}
-  />
-  <CompareBar
-    items={compareItems}
-    onOpen={()=>setShowCompare(true)}
-    onRemove={(id)=>setCompareIds((current)=>current.filter((itemId)=>itemId!==id))}
-    onClear={()=>setCompareIds([])}
-  />
 
-  {showOnboarding&&<OnboardingModal onClose={()=>setShowOnboarding(false)} onCreateListing={()=>setShowCreate(true)} />}
-  {showAuth&&<AuthModal
-    onClose={()=>setShowAuth(false)}
-    onAuthenticated={async(currentUser)=>{
-      setUser(currentUser);
-      await refreshProfile(currentUser);
-      await refreshNotifications(currentUser);
-      await refreshFavorites(currentUser);
-      await refreshListings();
-    }}
-  />}
-  {showCreate&&<ListingForm onClose={()=>setShowCreate(false)} onCreate={handleCreate} user={user} profile={profile}/>}  
+  <BottomNav onCreate={()=>setShowCreate(true)} onMessages={()=>setShowMessages(true)} onMyListings={()=>setShowMyListings(true)} onNotifications={()=>setShowNotifications(true)} />
+
+  {showAuth&&<AuthModal onClose={async()=>{setShowAuth(false); const {data}=await supabase.auth.getUser(); setUser(data.user ?? null); await refreshProfile(data.user ?? null)}}/>}
+  {showCreate&&<ListingForm onClose={()=>setShowCreate(false)} onCreate={handleCreate}/>}  
   {showAdmin&&isAdmin&&<AdminPanel listings={listings} onApprove={approve} onReject={reject} onDelete={del} onFeature={feature} onClose={()=>setShowAdmin(false)}/>}  
   {showPricing&&<PricingModal onClose={()=>setShowPricing(false)}/>}  
-  {showMyListings&&(
-    <MyListingsModal
-      user={user}
-      onClose={()=>setShowMyListings(false)}
-    />
-  )}
-  {showMessages&&(
-    <MessagesModal
-      user={user}
-      onClose={()=>setShowMessages(false)}
-      onOpenConversation={(conversation)=>{
-        setShowMessages(false);
-        markActivationEvent('message');
-     setActiveConversation(conversation);
-      }}
-    />
-  )}
-  {showFavorites&&(
-    <FavoritesModal
-      user={user}
-      onClose={()=>setShowFavorites(false)}
-      onOpenListing={(listing)=>{
-        setShowFavorites(false);
-        setSelected(listing);
-      }}
-    />
-  )}
-
-  {showProfile&&user&&(
-    <ProfileModal
-      user={user}
-      profile={profile}
-      onClose={()=>setShowProfile(false)}
-      onSaved={async()=>{
-        await refreshProfile(user);
-      }}
-    />
-  )}
-  {showNotifications&&(
-    <NotificationsModal
-      user={user}
-      onClose={async()=>{
-        setShowNotifications(false);
-        await refreshNotifications();
-      }}
-    />
-  )}
-  {showOffers&&user&&(
-    <OffersModal user={user} onClose={()=>setShowOffers(false)} />
-  )}
-  {showSavedSearches&&user&&(
-    <SavedSearchesModal
-      user={user}
-      onClose={()=>setShowSavedSearches(false)}
-      onApply={applySavedSearch}
-    />
-  )}
-  {showFeedback&&(
-    <FeedbackModal
-      user={user}
-      onClose={()=>setShowFeedback(false)}
-    />
-  )}
-  {showCompare&&compareItems.length>0&&(
-    <CompareModal
-      items={compareItems}
-      onClose={()=>setShowCompare(false)}
-      onOpenListing={(listing)=>{setShowCompare(false); router.push(`/ilan/${listing.id}`)}}
-      onStartChat={(listing)=>{setShowCompare(false); startChatForListing(listing)}}
-    />
-  )}
-  {activeConversation&&(
-    <ChatModal
-      user={user}
-      conversation={activeConversation}
-      onClose={()=>setActiveConversation(null)}
-    />
-  )}
-  {selected&&(
-    <ListingDetailModal
-      selected={selected}
-      user={user}
-      onClose={()=>setSelected(null)}
-      onStartChat={()=>startChatForListing(selected)}
-    />
-  )}
+  {showMyListings&&(<MyListingsModal user={user} onClose={()=>setShowMyListings(false)} />)}
+  {showMessages&&(<MessagesModal user={user} onClose={()=>setShowMessages(false)} onOpenConversation={(conversation)=>{ setShowMessages(false); setActiveConversation(conversation); }} />)}
+  {showFavorites&&(<FavoritesModal user={user} onClose={()=>setShowFavorites(false)} onOpenListing={(listing)=>{ setShowFavorites(false); setSelected(listing); }} />)}
+  {showNotifications&&(<NotificationsModal user={user} onClose={async()=>{ setShowNotifications(false); await refreshNotifications(); }} />)}
+  {activeConversation&&(<ChatModal user={user} conversation={activeConversation} onClose={()=>setActiveConversation(null)} />)}
+  {selected&&(<ListingDetailModal selected={selected} user={user} onClose={()=>setSelected(null)} onStartChat={()=>startChatForListing(selected)} />)}
  </div>;
 }
