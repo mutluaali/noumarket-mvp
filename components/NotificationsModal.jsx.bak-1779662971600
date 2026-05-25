@@ -1,0 +1,118 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Bell, RefreshCw, X } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { withTimeout } from '@/lib/safeAsync';
+
+export default function NotificationsModal({ isOpen, onClose, user }) {
+  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [error, setError] = useState(null);
+
+  const loadNotifications = async () => {
+    if (!isOpen) return;
+
+    if (!user?.id) {
+      setNotifications([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const { data, error } = await withTimeout(
+      supabase
+        .from('notifications')
+        .select('id, title, body, type, read_at, created_at, listing_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      6000,
+      'Bildirimler şu anda yüklenemedi. Bağlantı veya Supabase/RLS ayarlarını kontrol et.'
+    );
+
+    if (error) {
+      setError(error.message || 'Bildirimler yüklenemedi.');
+      setNotifications([]);
+    } else {
+      setNotifications(Array.isArray(data) ? data : []);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (isOpen) loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user?.id]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+      <div className="mt-10 w-full max-w-3xl rounded-[28px] bg-white p-6 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-blue-600">
+              <Bell size={16} /> Bildirimler
+            </div>
+            <h2 className="text-2xl font-black text-slate-950">Bildirimlerin</h2>
+            <p className="text-sm text-slate-500">Sistem ve ilan hareketleri burada görünür.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadNotifications}
+              className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
+            >
+              <RefreshCw size={15} className="mr-2 inline" /> Yenile
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-slate-700 hover:bg-slate-100"
+              aria-label="Kapat"
+            >
+              <X size={22} />
+            </button>
+          </div>
+        </div>
+
+        {!user?.id ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
+            Bildirimlerini görmek için giriş yapmalısın.
+          </div>
+        ) : loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 animate-pulse rounded-3xl bg-slate-100" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+            {error}
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
+            Henüz bildirimin yok.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((item) => (
+              <div key={item.id} className="rounded-3xl border border-slate-200 p-4">
+                <div className="font-bold text-slate-950">{item.title || 'Bildirim'}</div>
+                <div className="mt-1 text-sm text-slate-600">{item.body || 'Detay bulunamadı.'}</div>
+                <div className="mt-2 text-xs text-slate-400">
+                  {item.created_at ? new Date(item.created_at).toLocaleString('tr-TR') : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

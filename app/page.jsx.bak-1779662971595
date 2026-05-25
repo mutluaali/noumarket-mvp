@@ -20,7 +20,6 @@ import { searchListings } from '@/lib/search';
 import { demoListings, formatXpf } from '@/lib/demoData';
 import { supabase } from '@/lib/supabase';
 import { withTimeout } from '@/lib/safeAsync';
-import { getUnreadNotificationCount } from '@/lib/notifications';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
 import { CATEGORY_TREE, buildCategoryLabel, findCategoryNode, getDescendantCategoryIds } from '@/lib/categorySchema';
@@ -79,7 +78,7 @@ export default function HomePage(){
      setProfile(nextProfile);
      setIsAdmin(userIsAdmin(nextProfile));
    } catch (error) {
-     console.warn('refreshProfile:', error);
+     console.error('refreshProfile:', error);
      setProfile(null);
      setIsAdmin(false);
    }
@@ -90,10 +89,10 @@ export default function HomePage(){
    try{
      const data = showAdmin && isAdmin
        ? await withTimeout(getAdminListings(), 8000, 'Admin ilanları zaman aşımına uğradı')
-       : await withTimeout(searchListings({ query, category, location, minPrice, maxPrice, sort }), 30000, 'İlan araması beklenenden uzun sürdü; yedek ilanlar gösteriliyor');
+       : await withTimeout(searchListings({ query, category, location, minPrice, maxPrice, sort }), 8000, 'İlan araması zaman aşımına uğradı');
      setListings(data.map(normalizeListing));
    }catch(error){
-     console.warn(error);
+     console.error(error);
      try {
        const fallback = showAdmin && isAdmin ? await withTimeout(getAdminListings(), 5000, 'Admin yedek sorgusu zaman aşımına uğradı') : await withTimeout(getApprovedListings(), 5000, 'Yedek ilan sorgusu zaman aşımına uğradı');
        setListings(fallback.map(normalizeListing));
@@ -112,10 +111,20 @@ export default function HomePage(){
    }
 
    try {
-     const count = await getUnreadNotificationCount(currentUser.id);
-     setNotificationCount(Number(count || 0));
+     const { count, error } = await withTimeout(
+       supabase
+         .from('notifications')
+         .select('id', { count: 'exact', head: true })
+         .eq('user_id', currentUser.id)
+         .eq('is_read', false),
+       6000,
+       'Bildirim sayısı zaman aşımına uğradı'
+     );
+
+     if(error) throw error;
+     setNotificationCount(count || 0);
    } catch (error) {
-     console.warn('refreshNotifications fallback:', error);
+     console.error('refreshNotifications:', error);
      setNotificationCount(0);
    }
  }
@@ -131,7 +140,7 @@ export default function HomePage(){
        await refreshNotifications(currentUser);
      })
      .catch((error)=>{
-       console.warn('auth init:', error);
+       console.error('auth init:', error);
        if(mounted){
          setUser(null);
          setProfile(null);
@@ -201,7 +210,7 @@ export default function HomePage(){
      alert('İlan kaydedildi. Admin onayından sonra yayına çıkacak.');
      await refreshListings();
    }catch(error){
-     console.warn(error);
+     console.error(error);
      alert(error.message || 'İlan kaydedilemedi. Veritabanı kolonlarını ve RLS yetkilerini kontrol et.');
    }
  }
@@ -256,7 +265,7 @@ export default function HomePage(){
   <Header
     user={user}
     isAdmin={isAdmin}
-    onAuth={() => setShowAuth(true)}
+    onAuth={()=>setShowAuth(true)}
     onLogout={async()=>{
       await supabase.auth.signOut();
       setUser(null); setProfile(null); setIsAdmin(false); setShowAdmin(false); setNotificationCount(0);
@@ -265,9 +274,9 @@ export default function HomePage(){
     onPricing={()=>setShowPricing(true)}
     onAdmin={()=>{ if(!isAdmin){ alert('Admin yetkin yok.'); return; } setShowAdmin(true); }}
     onMyListings={()=>setShowMyListings(true)}
-    onMessages={()=> user ? setShowMessages(true) : setShowAuth(true)}
-    onFavorites={()=> user ? setShowFavorites(true) : setShowAuth(true)}
-    onNotifications={()=> user ? setShowNotifications(true) : setShowAuth(true)}
+    onMessages={()=>setShowMessages(true)}
+    onFavorites={()=>setShowFavorites(true)}
+    onNotifications={()=>setShowNotifications(true)}
     notificationCount={notificationCount}
     searchQuery={query}
     onSearchQueryChange={setQuery}
@@ -414,7 +423,7 @@ export default function HomePage(){
   <BottomNav onCreate={()=>setShowCreate(true)} onMessages={()=>setShowMessages(true)} onMyListings={()=>setShowMyListings(true)} onNotifications={()=>setShowNotifications(true)} />
 
   {showAuth&&<AuthModal onClose={async()=>{setShowAuth(false); const {data}=await supabase.auth.getUser(); setUser(data.user ?? null); await refreshProfile(data.user ?? null)}}/>}
-  {showCreate&&<ListingForm user={user} profile={profile} onClose={()=>setShowCreate(false)} onCreate={handleCreate}/>}  
+  {showCreate&&<ListingForm onClose={()=>setShowCreate(false)} onCreate={handleCreate}/>}  
   {showAdmin&&isAdmin&&<AdminPanel listings={listings} onApprove={approve} onReject={reject} onDelete={del} onFeature={feature} onClose={()=>setShowAdmin(false)}/>}  
   {showPricing&&<PricingModal onClose={()=>setShowPricing(false)}/>}  
   {showMyListings&&(<MyListingsModal user={user} onClose={()=>setShowMyListings(false)} />)}
