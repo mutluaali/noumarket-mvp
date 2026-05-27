@@ -13,6 +13,7 @@ html{scroll-behavior:smooth;background:var(--background)}
 body{
   margin:0;
   padding:0;
+  overflow-x:hidden;
   background:
     radial-gradient(circle at 15% 0%, rgba(59,130,246,.11), transparent 28rem),
     radial-gradient(circle at 85% 8%, rgba(245,158,11,.12), transparent 24rem),
@@ -25,6 +26,7 @@ body{
 button,input,select,textarea{font:inherit}
 button{touch-action:manipulation}
 img{max-width:100%;display:block}
+body,button,input,select,textarea{letter-spacing:0}
 ::selection{background:#0f172a;color:white}
 
 .no-scrollbar::-webkit-scrollbar{display:none}

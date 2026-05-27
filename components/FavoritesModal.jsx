@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Heart, RefreshCw } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { normalizeListing } from '@/lib/listings';
 import ListingCard from '@/components/ListingCard';
 import { ModalShell, SkeletonBox, EmptyState, ErrorState, LoginRequired } from '@/components/AsyncState';
-import { getErrorMessage, withTimeout } from '@/lib/safeAsync';
+import { getErrorMessage } from '@/lib/safeAsync';
+import { getFavoriteListings } from '@/lib/favorites';
 
 export default function FavoritesModal({ user, onClose, onOpenListing }) {
   const [items, setItems] = useState([]);
@@ -17,16 +17,10 @@ export default function FavoritesModal({ user, onClose, onOpenListing }) {
     if (!user?.id) { setItems([]); setLoading(false); return; }
     setLoading(true); setError('');
     try {
-      const { data, error: queryError } = await withTimeout(
-        supabase.from('favorites').select('listing_id, listings(*)').eq('user_id', user.id).order('created_at', { ascending: false }),
-        8000,
-        'Favoriler sorgusu çok uzun sürdü. Supabase/RLS ayarlarını kontrol et.'
-      );
-      if (queryError) throw queryError;
-      const normalized = (data || []).map((row) => row.listings).filter(Boolean).map(normalizeListing);
+      const data = await getFavoriteListings();
+      const normalized = (data || []).filter(Boolean).map(normalizeListing);
       setItems(normalized);
     } catch (err) {
-      console.error('FavoritesModal:', err);
       setError(getErrorMessage(err, 'Favoriler yüklenemedi.'));
       setItems([]);
     } finally {

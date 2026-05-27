@@ -19,11 +19,12 @@ import { getOrCreateConversation } from '@/lib/messages';
 import { searchListings } from '@/lib/search';
 import { demoListings, formatXpf } from '@/lib/demoData';
 import { supabase } from '@/lib/supabase';
-import { withTimeout } from '@/lib/safeAsync';
+import { withTimeout, withTimeoutFallback } from '@/lib/safeAsync';
 import { getUnreadNotificationCount } from '@/lib/notifications';
 import { getCurrentProfile, userIsAdmin } from '@/lib/profiles';
 import { getApprovedListings, getAdminListings, createListing, approveListing, rejectListing, deleteListing, toggleFeaturedListing, normalizeListing } from '@/lib/listings';
-import { CATEGORY_TREE, buildCategoryLabel, findCategoryNode, getDescendantCategoryIds } from '@/lib/categorySchema';
+import { CATEGORY_TREE, buildCategoryLabel, findCategoryNode, getDescendantCategoryIds, calculateCategoryCounts } from '@/lib/categorySchema';
+import { LOCATION_OPTIONS } from '@/lib/locations';
 import MarketplaceSidebar from '@/components/MarketplaceSidebar';
 
 function BottomNav({ onCreate, onMessages, onMyListings, onNotifications }) {
@@ -53,6 +54,7 @@ export default function HomePage(){
  const [minPrice,setMinPrice]=useState('');
  const [maxPrice,setMaxPrice]=useState('');
  const [sort,setSort]=useState('newest');
+ const [advancedFilters,setAdvancedFilters]=useState({});
  const [selected,setSelected]=useState(null);
  const [showAuth,setShowAuth]=useState(false);
  const [showCreate,setShowCreate]=useState(false);
@@ -89,9 +91,11 @@ export default function HomePage(){
    setLoadingListings(true);
    try{
      const data = showAdmin && isAdmin
-       ? await withTimeout(getAdminListings(), 8000, 'Admin ilanları zaman aşımına uğradı')
-       : await withTimeout(searchListings({ query, category, location, minPrice, maxPrice, sort }), 30000, 'İlan araması beklenenden uzun sürdü; yedek ilanlar gösteriliyor');
-     setListings(data.map(normalizeListing));
+       ? await withTimeoutFallback(getAdminListings(), 15000, [])
+       : await withTimeoutFallback(searchListings({ query, category, location, minPrice, maxPrice, sort }), 15000, []);
+     if (data?.length) setListings(data.map(normalizeListing));
+     else if (!query && category === 'Tümü' && location === 'Tümü') setListings(demoListings);
+     else setListings([]);
    }catch(error){
      console.warn(error);
      try {
@@ -112,7 +116,7 @@ export default function HomePage(){
    }
 
    try {
-     const count = await getUnreadNotificationCount(currentUser.id);
+     const count = await withTimeoutFallback(getUnreadNotificationCount(currentUser.id), 15000, 0);
      setNotificationCount(Number(count || 0));
    } catch (error) {
      console.warn('refreshNotifications fallback:', error);
@@ -122,7 +126,7 @@ export default function HomePage(){
 
  useEffect(()=>{
    let mounted = true;
-   withTimeout(supabase.auth.getUser(), 6000, 'Auth kontrolü zaman aşımına uğradı')
+   withTimeoutFallback(supabase.auth.getUser(), 12000, { data: { user: null } })
      .then(async ({data})=>{
        if(!mounted) return;
        const currentUser = data.user ?? null;
@@ -154,7 +158,7 @@ export default function HomePage(){
 
  const approved=listings.filter(x=>x.status==='approved');
  const pending=listings.filter(x=>x.status==='pending');
- const locations=['Tümü',...Array.from(new Set(approved.map(x=>x.location).filter(Boolean)))];
+ const categoryCounts = useMemo(() => calculateCategoryCounts(approved), [approved]);
 
  const stats=useMemo(()=>{
    const totalViews=approved.reduce((a,x)=>a+(x.views||0),0);
@@ -174,6 +178,41 @@ export default function HomePage(){
  }, [selectedCategory, selectedPath]);
  const selectedCategoryLabel = selectedPath.map(x => x.label).join(' > ');
 
+
+ function normalizeFilterNumber(value){
+   if(value === undefined || value === null || value === '') return null;
+   const match = String(value).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+   if(!match) return null;
+   const parsed = Number(match[0]);
+   return Number.isFinite(parsed) ? parsed : null;
+ }
+
+ function getListingFieldValue(item, key){
+   if(!item) return undefined;
+   const attrs = item.attributes || {};
+   return item[key] ?? attrs[key] ?? attrs[`${key}Value`] ?? attrs[`${key}_value`];
+ }
+
+ function advancedFiltersMatch(item){
+   const entries = Object.entries(advancedFilters || {}).filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '');
+   if(!entries.length) return true;
+
+   return entries.every(([key, rawValue]) => {
+     if(key.endsWith('Min') || key.endsWith('Max')) {
+       const baseKey = key.replace(/(Min|Max)$/, '');
+       const itemValue = normalizeFilterNumber(getListingFieldValue(item, baseKey));
+       const filterValue = normalizeFilterNumber(rawValue);
+       if(filterValue === null) return true;
+       if(itemValue === null) return false;
+       return key.endsWith('Min') ? itemValue >= filterValue : itemValue <= filterValue;
+     }
+
+     const itemValue = getListingFieldValue(item, key);
+     if(itemValue === undefined || itemValue === null) return false;
+     return String(itemValue).toLowerCase() === String(rawValue).toLowerCase();
+   });
+ }
+
  function categoryMatchesListing(item){
    if(!selectedCategoryId) return true;
    const allowedIds = new Set(getDescendantCategoryIds(selectedCategoryId));
@@ -186,7 +225,7 @@ export default function HomePage(){
      || labels.some(label => text.includes(label));
  }
 
- const filtered=useMemo(()=>approved.filter(categoryMatchesListing),[approved, selectedCategoryId]);
+ const filtered=useMemo(()=>approved.filter((item) => categoryMatchesListing(item) && advancedFiltersMatch(item)),[approved, selectedCategoryId, advancedFilters]);
 
  async function handleCreate(payload){
    if(!user){
@@ -219,6 +258,7 @@ export default function HomePage(){
  function handleSidebarCategory(node){
    if(!node){
      setSelectedCategoryId(null);
+     setAdvancedFilters({});
      setCategory('Tümü');
      setTimeout(()=>refreshListings(),0);
      scrollToListings();
@@ -227,6 +267,7 @@ export default function HomePage(){
    const found = findCategoryNode(node.id);
    const label = found ? found.path.map(x => x.label).join(' > ') : node.label;
    setSelectedCategoryId(node.id);
+   setAdvancedFilters({});
    setCategory(label);
    setTimeout(()=>refreshListings(),0);
    scrollToListings();
@@ -252,7 +293,7 @@ export default function HomePage(){
    }
  }
 
- return <div className="min-h-screen bg-slate-50 pb-24 text-slate-900 md:pb-0">
+ return <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-24 text-slate-900 md:pb-0">
   <Header
     user={user}
     isAdmin={isAdmin}
@@ -274,22 +315,22 @@ export default function HomePage(){
     onSearchSubmit={() => { refreshListings(); scrollToListings(); }}
   />
 
-  <main className="mx-auto flex max-w-[1500px] gap-5 px-3 py-4 md:px-5">
-    <MarketplaceSidebar selectedCategoryId={selectedCategoryId} onSelectCategory={handleSidebarCategory} />
+  <main className="mx-auto flex w-full max-w-[1500px] gap-5 px-2 py-3 sm:px-3 md:px-5 md:py-4">
+    <MarketplaceSidebar selectedCategoryId={selectedCategoryId} onSelectCategory={handleSidebarCategory} categoryCounts={categoryCounts} />
 
     <div className="min-w-0 flex-1">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:rounded-3xl">
         <div className="grid md:grid-cols-[1fr_420px]">
-          <div className="p-6 md:p-8">
+          <div className="p-4 sm:p-6 md:p-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 ring-1 ring-blue-100">
               <ShieldCheck size={14}/> NouMarket güvenli ilan pazaryeri
             </div>
-            <h1 className="mt-4 max-w-xl text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Aradığın her şey NouMarket'te!</h1>
+            <h1 className="mt-4 max-w-xl text-2xl font-black tracking-tight text-slate-950 sm:text-3xl md:text-5xl">Aradığın her şey NouMarket'te!</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500 md:text-base">Emlak, vasıta, elektronik ve ikinci el ürünlerde hızlı arama. Sol kategori ağacıyla Sahibinden tarzı derin kategori gezintisi.</p>
-            <div className="mt-6 grid max-w-lg grid-cols-3 divide-x divide-slate-200 rounded-3xl bg-slate-50 p-4">
-              <div><div className="text-xl font-black text-blue-600">1M+</div><div className="text-xs font-bold text-slate-500">Aktif ilan</div></div>
-              <div className="pl-4"><div className="text-xl font-black text-blue-600">500K+</div><div className="text-xs font-bold text-slate-500">Mutlu kullanıcı</div></div>
-              <div className="pl-4"><div className="text-xl font-black text-blue-600">7/24</div><div className="text-xs font-bold text-slate-500">Destek</div></div>
+            <div className="mt-6 grid max-w-lg grid-cols-3 divide-x divide-slate-200 rounded-2xl bg-slate-50 p-3 sm:rounded-3xl sm:p-4">
+              <div><div className="text-lg font-black text-blue-600 sm:text-xl">1M+</div><div className="text-[11px] font-bold text-slate-500 sm:text-xs">Aktif ilan</div></div>
+              <div className="pl-3 sm:pl-4"><div className="text-lg font-black text-blue-600 sm:text-xl">500K+</div><div className="text-[11px] font-bold text-slate-500 sm:text-xs">Mutlu kullanıcı</div></div>
+              <div className="pl-3 sm:pl-4"><div className="text-lg font-black text-blue-600 sm:text-xl">7/24</div><div className="text-[11px] font-bold text-slate-500 sm:text-xs">Destek</div></div>
             </div>
           </div>
           <div className="hidden bg-gradient-to-br from-slate-100 to-white p-6 md:block">
@@ -298,77 +339,56 @@ export default function HomePage(){
         </div>
       </section>
 
-      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <section className="mt-3 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm sm:mt-4 sm:rounded-3xl sm:p-3">
         <div className="grid gap-3 md:grid-cols-[1fr_190px_110px]">
           <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
             <Search className="text-slate-400" size={20}/>
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ne aramıştınız?" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
           </div>
           <select value={location} onChange={e=>setLocation(e.target.value)} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-bold outline-none ring-1 ring-slate-200">
-            {locations.map(x=><option key={x}>{x}</option>)}
+            {LOCATION_OPTIONS.map(x=><option key={x}>{x}</option>)}
           </select>
           <button onClick={refreshListings} className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Ara</button>
         </div>
       </section>
 
-      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:hidden">
+      <section className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-4 sm:rounded-3xl sm:p-4 lg:hidden">
         <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Kategoriler</h2><button onClick={()=>handleSidebarCategory(null)} className="text-xs font-black text-blue-600">Tümü</button></div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {CATEGORY_TREE.map((item)=><button key={item.id} onClick={()=>handleSidebarCategory(item)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-black ring-1 ${selectedCategoryId===item.id?'bg-slate-900 text-white ring-slate-900':'bg-white text-slate-700 ring-slate-200'}`}>{item.icon} {item.label}</button>)}
         </div>
       </section>
 
-      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
+      <section className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-4 sm:rounded-3xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-black">Popüler Kategoriler</h2>
-          <button onClick={()=>handleSidebarCategory(null)} className="text-sm font-black text-blue-600">Tüm Kategoriler →</button>
+          <button onClick={()=>handleSidebarCategory(null)} className="shrink-0 text-xs font-black text-blue-600 sm:text-sm">Tümü →</button>
         </div>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8">
-          {CATEGORY_TREE.slice(0,8).map((item)=><button key={item.id} onClick={()=>handleSidebarCategory(item)} className="group rounded-3xl bg-slate-50 p-4 text-center ring-1 ring-slate-100 hover:bg-blue-50 hover:ring-blue-100"><div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-xl shadow-sm">{item.icon}</div><div className="mt-2 truncate text-xs font-black text-slate-700 group-hover:text-blue-700">{item.label}</div></button>)}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-6 xl:grid-cols-8">
+          {CATEGORY_TREE.slice(0,8).map((item)=><button key={item.id} onClick={()=>handleSidebarCategory(item)} className="group rounded-2xl bg-slate-50 p-3 text-center ring-1 ring-slate-100 hover:bg-blue-50 hover:ring-blue-100 sm:rounded-3xl sm:p-4"><div className="mx-auto grid h-10 w-10 place-items-center rounded-2xl bg-white text-lg shadow-sm sm:h-12 sm:w-12 sm:text-xl">{item.icon}</div><div className="mt-2 truncate text-xs font-black text-slate-700 group-hover:text-blue-700">{item.label}</div></button>)}
         </div>
       </section>
 
       {selectedCategory && (
-        <section className="mt-4 rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">Seçilen kategori</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm font-black text-slate-800">
-                {selectedPath.map((item, index) => (
-                  <span key={item.id} className="inline-flex items-center gap-2">
-                    <button onClick={() => handleSidebarCategory(item)} className={index === selectedPath.length - 1 ? 'text-blue-700' : 'text-slate-500 hover:text-blue-700'}>{item.label}</button>
-                    {index < selectedPath.length - 1 ? <span className="text-slate-300">›</span> : null}
-                  </span>
-                ))}
-              </div>
+        <section className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/40 px-3 py-3 shadow-sm sm:mt-4 sm:rounded-3xl sm:px-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[11px] font-black uppercase tracking-wide text-blue-500">Aktif kategori</div>
+              <div className="mt-1 truncate text-sm font-black text-slate-900">{selectedPath.map((item) => item.label).join(' › ')}</div>
             </div>
-            <button onClick={() => handleSidebarCategory(null)} className="w-fit rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-200">Seçimi temizle</button>
+            <button onClick={() => handleSidebarCategory(null)} className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">Seçimi temizle</button>
           </div>
-
-          {activeSubcategoryOptions.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {activeSubcategoryOptions.map((child) => (
-                <button
-                  key={child.id}
-                  onClick={() => handleSidebarCategory(child)}
-                  className={`rounded-full px-4 py-2 text-xs font-black ring-1 transition ${selectedCategoryId === child.id ? 'bg-blue-600 text-white ring-blue-600' : 'bg-blue-50 text-blue-700 ring-blue-100 hover:bg-blue-100'}`}
-                >
-                  {child.label}
-                </button>
-              ))}
-            </div>
-          )}
         </section>
       )}
 
       {approved.filter(x=>x.isFeatured).length>0 && (
-        <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2"><h2 className="text-lg font-black">Öne Çıkan İlanlar</h2><span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">Premium</span></div>
             <button onClick={()=>setShowPricing(true)} className="text-sm font-black text-blue-600">Tümünü Gör</button>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {approved.filter(x=>x.isFeatured).slice(0,8).map(item=><div key={item.id} className="min-w-[250px] max-w-[250px]"><ListingCard item={item} onClick={()=>setSelected(item)}/></div>)}
+          <div className="flex gap-3 overflow-x-auto pb-2 sm:gap-4">
+            {approved.filter(x=>x.isFeatured).slice(0,8).map(item=><div key={item.id} className="min-w-[78vw] max-w-[78vw] sm:min-w-[250px] sm:max-w-[250px]"><ListingCard item={item} onClick={()=>setSelected(item)}/></div>)}
           </div>
         </section>
       )}
@@ -378,12 +398,12 @@ export default function HomePage(){
         query={query} setQuery={setQuery} category={category} setCategory={setCategory}
         location={location} setLocation={setLocation} minPrice={minPrice} setMinPrice={setMinPrice}
         maxPrice={maxPrice} setMaxPrice={setMaxPrice} sort={sort} setSort={setSort}
-        locations={locations} onSearch={refreshListings}
-        onClear={()=>{ setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }}
+        selectedCategory={selectedCategory} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} onSearch={refreshListings}
+        onClear={()=>{ setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setAdvancedFilters({}); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }}
       />
 
-      <section className="mt-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-end justify-between gap-3">
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-xl font-black">Son İlanlar</h2>
             <p className="mt-1 text-sm text-slate-500">{loadingListings?'İlanlar yükleniyor...':`${filtered.length} ilan gösteriliyor`}{selectedCategoryLabel ? ` • ${selectedCategoryLabel}` : ''}</p>
@@ -391,19 +411,19 @@ export default function HomePage(){
           {isAdmin && <button onClick={()=>setShowAdmin(true)} className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700 ring-1 ring-amber-200">{pending.length} onay bekliyor</button>}
         </div>
         {loadingListings ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
               <div key={index} className="h-[310px] animate-pulse rounded-3xl bg-slate-100 ring-1 ring-slate-200" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-center">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center sm:rounded-3xl sm:p-8">
             <div className="text-lg font-black text-slate-900">Bu filtrelerde ilan bulunamadı</div>
             <p className="mt-2 text-sm text-slate-500">Kategori veya fiyat filtresini genişletip tekrar dene.</p>
-            <button onClick={() => { setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }} className="mt-5 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white">Filtreleri temizle</button>
+            <button onClick={() => { setQuery(''); setCategory('Tümü'); setSelectedCategoryId(null); setAdvancedFilters({}); setLocation('Tümü'); setMinPrice(''); setMaxPrice(''); setSort('newest'); setTimeout(()=>refreshListings(),0); }} className="mt-5 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white">Filtreleri temizle</button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
             {filtered.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)}/>) }
           </div>
         )}

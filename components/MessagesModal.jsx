@@ -18,7 +18,6 @@ export default function MessagesModal({ user, onClose, onOpenConversation }) {
       const data = await getMyConversations(user.id);
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('MessagesModal:', err);
       setError(getErrorMessage(err, 'Mesajlar yüklenemedi.'));
       setItems([]);
     } finally {

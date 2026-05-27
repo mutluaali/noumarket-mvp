@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Grid2X2 } from 'lucide-react';
 import { CATEGORY_TREE, findCategoryNode, formatCount } from '@/lib/categorySchema';
 
-function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, onSelect }) {
+function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, onSelect, categoryCounts = {} }) {
   const isOpen = openIds.has(node.id);
   const isSelected = selectedCategoryId === node.id;
   const hasChildren = Boolean(node.children?.length);
   const isMain = level === 0;
+  const displayCount = categoryCounts[node.id] ?? 0;
 
   const levelStyle = level === 0
     ? 'px-3 py-2.5 text-sm font-black'
@@ -39,7 +40,7 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
         )}
 
         <span className="min-w-0 flex-1 truncate">{node.label}</span>
-        <span className="shrink-0 text-[11px] font-semibold text-slate-400">{formatCount(node.count)}</span>
+        <span className="shrink-0 text-[11px] font-semibold text-slate-400">{formatCount(displayCount)}</span>
         {hasChildren ? (isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />) : null}
       </button>
 
@@ -54,6 +55,7 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
               openIds={openIds}
               onToggle={onToggle}
               onSelect={onSelect}
+              categoryCounts={categoryCounts}
             />
           ))}
         </div>
@@ -62,7 +64,7 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
   );
 }
 
-export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory }) {
+export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory, categoryCounts = {} }) {
   const selected = selectedCategoryId ? findCategoryNode(selectedCategoryId) : null;
   const selectedPathIds = useMemo(() => selected?.path?.map((item) => item.id) || [], [selected]);
   const [openIds, setOpenIds] = useState(new Set());
@@ -125,6 +127,7 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
             openIds={openIds}
             onToggle={toggleNode}
             onSelect={onSelectCategory}
+            categoryCounts={categoryCounts}
           />
         ))}
       </div>

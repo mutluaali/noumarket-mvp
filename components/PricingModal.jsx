@@ -51,12 +51,12 @@ export default function PricingModal({ onClose, listingId: initialListingId = ''
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="mx-auto max-h-[92vh] max-w-5xl overflow-auto rounded-3xl bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
+    <div className="fixed inset-0 z-50 bg-slate-950/60 p-0 backdrop-blur-sm sm:p-4">
+      <div className="mx-auto h-[100dvh] max-w-5xl overflow-auto bg-white p-4 shadow-2xl sm:max-h-[92dvh] sm:rounded-3xl sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-800"><Crown size={14} /> Premium gelir modeli</div>
-            <h2 className="mt-2 text-2xl font-black">İlan görünürlüğünü artır</h2>
+            <h2 className="mt-2 text-xl font-black sm:text-2xl">İlan görünürlüğünü artır</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Premium ilanlar arama sonuçlarında üstte görünür, rozet alır ve satıcı panelinde performansı takip edilir.</p>
           </div>
           <button onClick={onClose} className="rounded-full p-2 hover:bg-slate-100"><X /></button>
@@ -70,7 +70,7 @@ export default function PricingModal({ onClose, listingId: initialListingId = ''
 
         {message && <div className="mb-5 rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-700 ring-1 ring-red-100">{message}</div>}
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-4">
           <div className="rounded-3xl border border-slate-200 bg-white p-5">
             <div className="text-sm font-bold text-slate-500">{standardPlan.name}</div>
             <div className="mt-2 text-3xl font-black">{standardPlan.price}</div>

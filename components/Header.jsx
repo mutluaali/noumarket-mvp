@@ -61,14 +61,14 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1560px] items-center gap-3 px-3 py-2 md:px-5">
+      <div className="mx-auto flex max-w-[1560px] items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3 md:px-5">
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 text-left"
           aria-label="NouMarket ana sayfa"
         >
-          <div className="grid h-12 w-12 place-items-center rounded-xl bg-slate-900 text-lg font-black text-white shadow-sm">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-base font-black text-white shadow-sm sm:h-12 sm:w-12 sm:text-lg">
             N
           </div>
           <div className="hidden leading-none sm:block">
@@ -112,7 +112,7 @@ export default function Header({
           </button>
         </form>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
           <IconButton icon={<Bookmark size={20} />} label="Kaydedilenler" onClick={onMyListings} className="hidden lg:grid" />
           <IconButton icon={<Mail size={20} />} label="Mesajlar" onClick={onMessages} className="hidden lg:grid" />
           <IconButton
@@ -135,7 +135,7 @@ export default function Header({
           <button
             type="button"
             onClick={onCreate}
-            className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-3 text-sm font-black text-white shadow-sm transition hover:bg-cyan-800"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-3 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-cyan-800 sm:gap-2 sm:px-4 sm:py-3"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">İlan Ver</span>
@@ -145,7 +145,7 @@ export default function Header({
             <button
               type="button"
               onClick={() => setAccountOpen((value) => !value)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 sm:gap-2 sm:px-3 sm:py-3"
             >
               <UserRound size={19} />
               <span className="hidden xl:inline">{user ? 'Hesabım' : 'Giriş Yap'}</span>
@@ -153,7 +153,7 @@ export default function Header({
             </button>
 
             {accountOpen && (
-              <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-16px)] max-w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
                 {user ? (
                   <>
                     <div className="px-3 py-2">

@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ClipboardList, RefreshCw } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { normalizeListing } from '@/lib/listings';
 import ListingCard from '@/components/ListingCard';
 import { ModalShell, SkeletonBox, EmptyState, ErrorState, LoginRequired } from '@/components/AsyncState';
-import { getErrorMessage, withTimeout } from '@/lib/safeAsync';
+import { getErrorMessage } from '@/lib/safeAsync';
+import { getMyListings } from '@/lib/myListings';
 
 export default function MyListingsModal({ user, onClose, onOpenListing }) {
   const [items, setItems] = useState([]);
@@ -17,15 +17,9 @@ export default function MyListingsModal({ user, onClose, onOpenListing }) {
     if (!user?.id) { setItems([]); setLoading(false); return; }
     setLoading(true); setError('');
     try {
-      const { data, error: queryError } = await withTimeout(
-        supabase.from('listings').select('*, listing_images(image_url, sort_order)').eq('user_id', user.id).order('created_at', { ascending: false }),
-        8000,
-        'İlanlarım sorgusu çok uzun sürdü. Supabase/RLS ayarlarını kontrol et.'
-      );
-      if (queryError) throw queryError;
+      const data = await getMyListings();
       setItems((data || []).map(normalizeListing));
     } catch (err) {
-      console.error('MyListingsModal:', err);
       setError(getErrorMessage(err, 'İlanların yüklenemedi.'));
       setItems([]);
     } finally {

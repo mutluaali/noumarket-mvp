@@ -53,6 +53,10 @@ function getAccessToken(request) {
   }
 }
 
+function isMissingColumn(error) {
+  return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || error?.details || '');
+}
+
 export async function GET(request) {
   try {
     const supabaseAdmin = makeAdminClient();
@@ -77,11 +81,47 @@ export async function GET(request) {
 
     const userId = authData.user.id;
 
-    const { data: listings, error: listingsError } = await supabaseAdmin
+    const listingSelect = [
+      'id',
+      'user_id',
+      'title',
+      'description',
+      'category',
+      'subcategory',
+      'category_id',
+      'subcategory_id',
+      'price',
+      'currency',
+      'location',
+      'seller_name',
+      'seller_phone',
+      'seller_email',
+      'image_url',
+      'status',
+      'is_featured',
+      'featured_until',
+      'view_count',
+      'created_at',
+      'updated_at',
+      'metadata',
+      'attributes',
+    ].join(',');
+
+    let { data: listings, error: listingsError } = await supabaseAdmin
       .from('listings')
-      .select('*')
+      .select(listingSelect)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(80);
+
+    if (listingsError && isMissingColumn(listingsError)) {
+      ({ data: listings, error: listingsError } = await supabaseAdmin
+        .from('listings')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(80));
+    }
 
     if (listingsError) {
       throw listingsError;
@@ -93,14 +133,29 @@ export async function GET(request) {
     const imagesByListingId = {};
     const favoriteCountByListingId = {};
     const conversationCountByListingId = {};
-    const messageCountByListingId = {};
 
     if (listingIds.length > 0) {
-      const { data: images, error: imagesError } = await supabaseAdmin
+      const imagesRequest = supabaseAdmin
         .from('listing_images')
         .select('listing_id, image_url, sort_order')
         .in('listing_id', listingIds)
         .order('sort_order', { ascending: true });
+
+      const favoritesRequest = supabaseAdmin
+        .from('favorites')
+        .select('listing_id')
+        .in('listing_id', listingIds);
+
+      const conversationsRequest = supabaseAdmin
+        .from('conversations')
+        .select('id, listing_id')
+        .in('listing_id', listingIds);
+
+      const [
+        { data: images, error: imagesError },
+        { data: favorites, error: favoritesError },
+        { data: conversations, error: conversationsError },
+      ] = await Promise.all([imagesRequest, favoritesRequest, conversationsRequest]);
 
       if (imagesError) {
         console.warn('listing_images query error:', imagesError.message);
@@ -117,11 +172,6 @@ export async function GET(request) {
         });
       }
 
-      const { data: favorites, error: favoritesError } = await supabaseAdmin
-        .from('favorites')
-        .select('listing_id')
-        .in('listing_id', listingIds);
-
       if (favoritesError) {
         console.warn('favorites count query error:', favoritesError.message);
       }
@@ -130,36 +180,12 @@ export async function GET(request) {
         favoriteCountByListingId[row.listing_id] = (favoriteCountByListingId[row.listing_id] || 0) + 1;
       }
 
-      const { data: conversations, error: conversationsError } = await supabaseAdmin
-        .from('conversations')
-        .select('id, listing_id')
-        .in('listing_id', listingIds);
-
       if (conversationsError) {
         console.warn('conversations count query error:', conversationsError.message);
       }
 
-      const conversationIds = [];
       for (const row of conversations || []) {
         conversationCountByListingId[row.listing_id] = (conversationCountByListingId[row.listing_id] || 0) + 1;
-        if (row.id) conversationIds.push(row.id);
-      }
-
-      if (conversationIds.length > 0) {
-        const conversationIdToListingId = Object.fromEntries((conversations || []).map((row) => [row.id, row.listing_id]));
-        const { data: messages, error: messagesError } = await supabaseAdmin
-          .from('messages')
-          .select('conversation_id')
-          .in('conversation_id', conversationIds);
-
-        if (messagesError) {
-          console.warn('messages count query error:', messagesError.message);
-        }
-
-        for (const row of messages || []) {
-          const listingId = conversationIdToListingId[row.conversation_id];
-          if (listingId) messageCountByListingId[listingId] = (messageCountByListingId[listingId] || 0) + 1;
-        }
       }
     }
 
@@ -168,7 +194,6 @@ export async function GET(request) {
       listing_images: imagesByListingId[listing.id] || [],
       favorite_count: favoriteCountByListingId[listing.id] || 0,
       conversation_count: conversationCountByListingId[listing.id] || 0,
-      message_count: messageCountByListingId[listing.id] || 0,
     }));
 
     return NextResponse.json({ data });
