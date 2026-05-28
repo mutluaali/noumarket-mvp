@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Filter, Search, X, BookmarkPlus, SlidersHorizontal, MapPin, ArrowUpDown } from 'lucide-react';
-import { FIELD_DEFINITIONS } from '@/lib/categorySchema';
+import { FIELD_DEFINITIONS, VEHICLE_MODELS } from '@/lib/categorySchema';
 import { LOCATION_OPTIONS } from '@/lib/locations';
 
 const FORCE_RANGE_FIELDS = new Set([
@@ -10,7 +10,7 @@ const FORCE_RANGE_FIELDS = new Set([
 ]);
 
 function FieldShell({ children, className = '' }) {
-  return <div className={`flex min-h-[52px] min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm transition focus-within:border-blue-300 focus-within:ring-4 focus-within:ring-blue-50 ${className}`}>{children}</div>;
+  return <div className={`flex min-h-[52px] min-w-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm transition focus-within:border-cyan-300 focus-within:ring-4 focus-within:ring-cyan-50 dark:border-white/10 dark:bg-white/5 dark:focus-within:ring-cyan-400/20 ${className}`}>{children}</div>;
 }
 
 function SelectShell({ children, icon }) {
@@ -23,7 +23,7 @@ function CityPicker({ location, setLocation }) {
       <select
         value={location || 'Tümü'}
         onChange={(event) => setLocation(event.target.value)}
-        className="min-h-[52px] w-full min-w-0 appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm font-black text-slate-800 shadow-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+        className="min-h-[52px] w-full min-w-0 appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm font-black text-slate-800 shadow-sm outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:ring-cyan-400/20"
       >
         {LOCATION_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
@@ -36,13 +36,13 @@ function FilterFields({ query, setQuery, location, setLocation, minPrice, setMin
     <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(260px,1.2fr)_minmax(190px,.8fr)_minmax(130px,.55fr)_minmax(130px,.55fr)_minmax(150px,.65fr)]">
       <FieldShell>
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="İlan, marka, model veya anahtar kelime ara" className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400" />
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="İlan, marka, model veya anahtar kelime ara" className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" />
       </FieldShell>
       <CityPicker location={location} setLocation={setLocation} />
-      <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} inputMode="numeric" placeholder="Min XPF" className="min-h-[52px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
-      <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="numeric" placeholder="Max XPF" className="min-h-[52px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50" />
+      <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} inputMode="numeric" placeholder="Min XPF" className="min-h-[52px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:ring-cyan-400/20" />
+      <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} inputMode="numeric" placeholder="Max XPF" className="min-h-[52px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-800 shadow-sm outline-none placeholder:text-slate-400 transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:ring-cyan-400/20" />
       <SelectShell icon={<ArrowUpDown size={17} />}>
-        <select value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-[52px] w-full min-w-0 appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm font-black text-slate-800 shadow-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+        <select value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-[52px] w-full min-w-0 appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-9 text-sm font-black text-slate-800 shadow-sm outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-50 dark:border-white/10 dark:bg-slate-900 dark:text-white dark:focus:ring-cyan-400/20">
           <option value="newest">En yeni</option>
           <option value="price_asc">Fiyat artan</option>
           <option value="price_desc">Fiyat azalan</option>
@@ -59,6 +59,7 @@ function shouldRenderRange(fieldKey, config) {
 
 function CategorySpecificFilters({ selectedCategory, advancedFilters = {}, setAdvancedFilters }) {
   const fields = selectedCategory?.node?.fields || [];
+  const modelOptions = VEHICLE_MODELS[selectedCategory?.node?.id] || [];
   if (!fields.length) return null;
 
   function update(key, value) {
@@ -95,6 +96,17 @@ function CategorySpecificFilters({ selectedCategory, advancedFilters = {}, setAd
                 <select value={advancedFilters[fieldKey] || ''} onChange={(e) => update(fieldKey, e.target.value)} className="min-h-[48px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
                   <option value="">Tümü</option>
                   {(config.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+              </label>
+            );
+          }
+          if (fieldKey === 'model' && modelOptions.length) {
+            return (
+              <label key={fieldKey} className="min-w-0">
+                <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">{config.label}</span>
+                <select value={advancedFilters[fieldKey] || ''} onChange={(e) => update(fieldKey, e.target.value)} className="min-h-[48px] w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                  <option value="">Tümü</option>
+                  {modelOptions.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </label>
             );
@@ -137,7 +149,7 @@ export default function SearchFilters(props) {
 
   return (
     <section className="mt-4 scroll-mt-24">
-      <div className="hidden rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:block">{content}</div>
+      <div className="hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/85 md:block">{content}</div>
       <div className="md:hidden"><button type="button" onClick={() => setMobileOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/25"><Filter size={18} /> Filtrele ve ara</button></div>
       {mobileOpen ? (
         <div className="fixed inset-0 z-[100] md:hidden">

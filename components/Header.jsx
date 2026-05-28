@@ -8,12 +8,14 @@ import {
   Bell,
   Heart,
   Crown,
+  Moon,
   Plus,
   UserRound,
   ChevronDown,
   ShieldCheck,
   Settings,
   LogOut,
+  Sun,
 } from 'lucide-react';
 
 export default function Header({
@@ -32,6 +34,8 @@ export default function Header({
   searchQuery = '',
   onSearchQueryChange,
   onSearchSubmit,
+  theme = 'light',
+  onToggleTheme,
 }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
@@ -60,7 +64,7 @@ export default function Header({
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85">
       <div className="mx-auto flex max-w-[1560px] items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3 md:px-5">
         <button
           type="button"
@@ -68,12 +72,12 @@ export default function Header({
           className="flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 text-left"
           aria-label="NouMarket ana sayfa"
         >
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-900 text-base font-black text-white shadow-sm sm:h-12 sm:w-12 sm:text-lg">
-            N
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-600 text-base font-black text-white shadow-sm sm:h-12 sm:w-12 sm:text-lg">
+            ✦
           </div>
           <div className="hidden leading-none sm:block">
-            <div className="text-2xl font-black tracking-tight text-slate-950">NouMarket</div>
-            <div className="mt-1 text-[11px] font-black tracking-[0.32em] text-sky-500">CLASSIFIEDS</div>
+            <div className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">Nou<span className="text-cyan-600">Market</span></div>
+            <div className="mt-1 text-[11px] font-black tracking-[0.32em] text-cyan-500">CLASSIFIEDS</div>
           </div>
         </button>
 
@@ -82,11 +86,11 @@ export default function Header({
             event.preventDefault();
             onSearchSubmit?.();
           }}
-          className="relative z-10 hidden min-w-0 flex-1 items-center rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-transparent focus-within:border-cyan-600 focus-within:ring-cyan-100 md:flex"
+          className="relative z-10 hidden min-w-0 flex-1 items-center rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-transparent focus-within:border-cyan-600 focus-within:ring-cyan-100 dark:border-white/10 dark:bg-white/5 dark:focus-within:ring-cyan-400/20 md:flex"
         >
           <button
             type="button"
-            className="shrink-0 rounded-l-2xl border-r border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-900"
+            className="shrink-0 rounded-l-2xl border-r border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white"
             onClick={() => inputRef.current?.focus()}
           >
             Tüm ilanlarda ara
@@ -100,7 +104,7 @@ export default function Header({
             onKeyDown={handleSearchKeyDown}
             placeholder="Araç, ev, telefon, tekne, hizmet..."
             autoComplete="off"
-            className="h-14 min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
+            className="h-14 min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 dark:text-white"
           />
 
           <button
@@ -126,8 +130,18 @@ export default function Header({
 
           <button
             type="button"
+            onClick={onToggleTheme}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:h-11 sm:w-11"
+            aria-label={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
+            title={theme === 'dark' ? 'Açık mod' : 'Koyu mod'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button
+            type="button"
             onClick={onPricing}
-            className="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 md:inline-flex"
+            className="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-200 md:inline-flex"
           >
             <Crown size={18} /> Premium
           </button>
@@ -145,7 +159,7 @@ export default function Header({
             <button
               type="button"
               onClick={() => setAccountOpen((value) => !value)}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 sm:gap-2 sm:px-3 sm:py-3"
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:gap-2 sm:px-3 sm:py-3"
             >
               <UserRound size={19} />
               <span className="hidden xl:inline">{user ? 'Hesabım' : 'Giriş Yap'}</span>
@@ -153,12 +167,12 @@ export default function Header({
             </button>
 
             {accountOpen && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-16px)] max-w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-16px)] max-w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-slate-900">
                 {user ? (
                   <>
                     <div className="px-3 py-2">
                       <div className="text-xs font-black uppercase tracking-wide text-slate-400">Oturum açık</div>
-                      <div className="mt-1 truncate text-sm font-black text-slate-900">{user.email}</div>
+                      <div className="mt-1 truncate text-sm font-black text-slate-900 dark:text-white">{user.email}</div>
                     </div>
                     <MenuItem onClick={onMyListings}>İlanlarım</MenuItem>
                     <MenuItem onClick={onFavorites}>Favorilerim</MenuItem>
@@ -169,7 +183,7 @@ export default function Header({
                   </>
                 ) : (
                   <>
-                    <div className="px-3 py-2 text-sm font-bold text-slate-500">Favoriler, mesajlar ve ilan vermek için giriş yap.</div>
+                    <div className="px-3 py-2 text-sm font-bold text-slate-500 dark:text-slate-300">Favoriler, mesajlar ve ilan vermek için giriş yap.</div>
                     <button
                       type="button"
                       onClick={() => {
@@ -193,9 +207,9 @@ export default function Header({
           event.preventDefault();
           onSearchSubmit?.();
         }}
-        className="border-t border-slate-100 px-3 py-2 md:hidden"
+        className="border-t border-slate-100 px-3 py-2 dark:border-white/10 md:hidden"
       >
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 focus-within:border-cyan-600">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 focus-within:border-cyan-600 dark:border-white/10 dark:bg-white/5">
           <Search size={18} className="text-slate-400" />
           <input
             type="search"
@@ -204,7 +218,7 @@ export default function Header({
             onKeyDown={handleSearchKeyDown}
             placeholder="Ne arıyorsun?"
             autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
           />
           <button type="submit" className="rounded-xl bg-cyan-700 px-3 py-2 text-xs font-black text-white">Ara</button>
         </div>
@@ -218,7 +232,7 @@ function IconButton({ icon, label, onClick, badge = 0, className = '' }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative place-items-center rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:bg-slate-50 ${className}`}
+      className={`relative place-items-center rounded-xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 ${className}`}
       aria-label={label}
       title={label}
     >
@@ -237,7 +251,7 @@ function MenuItem({ children, onClick, icon, danger = false }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-black transition ${danger ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-700 hover:bg-slate-50'}`}
+      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-black transition ${danger ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/10'}`}
     >
       {icon || <ShieldCheck size={16} className="text-slate-400" />}
       {children}

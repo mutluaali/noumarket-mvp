@@ -22,30 +22,34 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
       <button
         type="button"
         onClick={() => {
+          if (hasChildren) {
+            onToggle(node.id);
+            return;
+          }
           onSelect(node);
-          if (hasChildren) onToggle(node.id);
         }}
+        aria-expanded={hasChildren ? isOpen : undefined}
         className={`flex w-full items-center gap-3 rounded-2xl text-left transition ${levelStyle} ${
           isSelected
-            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
+            ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100 dark:bg-cyan-400/10 dark:text-cyan-200 dark:ring-cyan-300/20'
             : isMain
-              ? 'text-slate-900 hover:bg-slate-50'
-              : 'text-slate-700 hover:bg-slate-50 hover:text-blue-700'
+              ? 'text-slate-900 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10'
+              : 'text-slate-700 hover:bg-slate-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-cyan-200'
         }`}
       >
         {isMain ? (
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-slate-100 text-base">{node.icon || '•'}</span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-slate-100 text-base dark:bg-white/10">{node.icon || '*'}</span>
         ) : (
           <span className="shrink-0" style={{ width: `${Math.max(0, level - 1) * 14}px` }} />
         )}
 
         <span className="min-w-0 flex-1 truncate">{node.label}</span>
-        <span className="shrink-0 text-[11px] font-semibold text-slate-400">{formatCount(displayCount)}</span>
+        <span className="shrink-0 text-[11px] font-semibold text-slate-400 dark:text-slate-500">{formatCount(displayCount)}</span>
         {hasChildren ? (isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />) : null}
       </button>
 
       {hasChildren && isOpen ? (
-        <div className={`${isMain ? 'mt-1 rounded-2xl bg-slate-50/70 p-2' : 'mt-0.5'} space-y-0.5`}>
+        <div className={`${isMain ? 'mt-1 rounded-2xl bg-slate-50/70 p-2 dark:bg-white/5' : 'mt-0.5'} space-y-0.5`}>
           {node.children.map((child) => (
             <CategoryNode
               key={child.id}
@@ -93,18 +97,18 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
   }
 
   return (
-    <aside className="sticky top-[76px] hidden h-[calc(100vh-92px)] w-[300px] shrink-0 overflow-y-auto rounded-3xl border border-slate-200 bg-white p-3 shadow-sm lg:block">
-      <div className="mb-3 flex items-center justify-between border-b border-slate-100 px-2 pb-3">
+    <aside className="sticky top-[76px] hidden h-[calc(100vh-92px)] w-[300px] shrink-0 overflow-y-auto rounded-3xl border border-slate-200 bg-white/90 p-3 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-900/85 dark:shadow-black/30 lg:block">
+      <div className="mb-3 flex items-center justify-between border-b border-slate-100 px-2 pb-3 dark:border-white/10">
         <div>
-          <h2 className="text-sm font-black text-slate-900">Kategoriler</h2>
-          <p className="text-[11px] font-medium text-slate-400">Ana kategoriye tıkla, alt seçenekleri aç.</p>
+          <h2 className="text-sm font-black text-slate-900 dark:text-white">Kategoriler</h2>
+          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Ana kategoriye tikla, alt secenekleri ac.</p>
         </div>
         <button
           type="button"
           onClick={resetAll}
-          className="rounded-xl bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600 hover:bg-slate-200"
+          className="rounded-xl bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15"
         >
-          Tümü
+          Tumu
         </button>
       </div>
 
@@ -112,10 +116,10 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
         type="button"
         onClick={resetAll}
         className={`mb-2 flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-black ${
-          !selectedCategoryId ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+          !selectedCategoryId ? 'bg-cyan-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
         }`}
       >
-        <Grid2X2 size={16} /> Tüm İlanlar
+        <Grid2X2 size={16} /> Tum Ilanlar
       </button>
 
       <div className="space-y-1.5">
@@ -130,6 +134,13 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
             categoryCounts={categoryCounts}
           />
         ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm shadow-sm dark:border-amber-300/20 dark:bg-amber-300/10">
+        <div className="text-2xl">👑</div>
+        <div className="mt-2 font-black text-amber-800 dark:text-amber-200">Premium'a Yuksel</div>
+        <p className="mt-1 text-xs leading-5 text-amber-700/80 dark:text-amber-100/70">Daha fazla gorunurluk, oncelikli destek ve ozel avantajlar.</p>
+        <button type="button" className="mt-3 w-full rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black text-white hover:bg-cyan-700">Premium'u Kesfet</button>
       </div>
     </aside>
   );
