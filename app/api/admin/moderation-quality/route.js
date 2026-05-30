@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 import { analyzeListingSafety } from '@/lib/moderation';
-
-function getAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { auth: { persistSession: false } }
-  );
-}
 
 async function requireAdmin(request, supabase) {
   const auth = request.headers.get('authorization') || '';
@@ -30,7 +22,12 @@ async function requireAdmin(request, supabase) {
 
 export async function GET(request) {
   try {
-    const supabase = getAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabase = createServiceRoleClient();
     await requireAdmin(request, supabase);
 
     const { data: listings, error } = await supabase
@@ -80,7 +77,12 @@ export async function GET(request) {
 
 export async function PATCH(request) {
   try {
-    const supabase = getAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabase = createServiceRoleClient();
     const admin = await requireAdmin(request, supabase);
     const body = await request.json();
     const listingId = body.listingId;

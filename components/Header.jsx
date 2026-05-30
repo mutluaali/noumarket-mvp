@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   Search,
   Bookmark,
@@ -18,6 +18,14 @@ import {
   Sun,
 } from 'lucide-react';
 
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
 export default function Header({
   user,
   isAdmin,
@@ -30,6 +38,7 @@ export default function Header({
   onMessages,
   onFavorites,
   onNotifications,
+  onProfile,
   notificationCount = 0,
   searchQuery = '',
   onSearchQueryChange,
@@ -37,6 +46,10 @@ export default function Header({
   theme = 'light',
   onToggleTheme,
 }) {
+  const hydrated = useHydrated();
+  const activeUser = hydrated ? user : null;
+  const activeTheme = hydrated ? theme : 'light';
+  const activeNotificationCount = hydrated ? notificationCount : 0;
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
   const inputRef = useRef(null);
@@ -77,7 +90,7 @@ export default function Header({
           </div>
           <div className="hidden leading-none sm:block">
             <div className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">Nou<span className="text-cyan-600">Market</span></div>
-            <div className="mt-1 text-[11px] font-black tracking-[0.32em] text-cyan-500">CLASSIFIEDS</div>
+            <div className="mt-1 text-[11px] font-black tracking-[0.32em] text-cyan-500">İLAN PAZARI</div>
           </div>
         </button>
 
@@ -93,7 +106,7 @@ export default function Header({
             className="shrink-0 rounded-l-2xl border-r border-slate-200 bg-slate-50 px-4 py-4 text-sm font-black text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-white"
             onClick={() => inputRef.current?.focus()}
           >
-            Tüm ilanlarda ara
+            Ara
           </button>
 
           <input
@@ -102,7 +115,7 @@ export default function Header({
             value={searchQuery ?? ''}
             onChange={handleSearchChange}
             onKeyDown={handleSearchKeyDown}
-            placeholder="Araç, ev, telefon, tekne, hizmet..."
+            placeholder="Araba, ev, telefon, tekne, hizmet..."
             autoComplete="off"
             className="h-14 min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 dark:text-white"
           />
@@ -117,25 +130,36 @@ export default function Header({
         </form>
 
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
-          <IconButton icon={<Bookmark size={20} />} label="Kaydedilenler" onClick={onMyListings} className="hidden lg:grid" />
+          <IconButton icon={<Bookmark size={20} />} label="Favoriler" onClick={onFavorites} className="hidden lg:grid" />
           <IconButton icon={<Mail size={20} />} label="Mesajlar" onClick={onMessages} className="hidden lg:grid" />
-          <IconButton
-            icon={<Bell size={20} />}
-            label="Bildirimler"
-            onClick={onNotifications}
-            badge={notificationCount}
-            className="hidden lg:grid"
-          />
+          {activeUser ? (
+            <>
+              <IconButton
+                icon={<Bell size={20} />}
+                label="Bildirimler"
+                onClick={onNotifications}
+                badge={activeNotificationCount}
+                className="grid sm:hidden"
+              />
+              <IconButton
+                icon={<Bell size={20} />}
+                label="Bildirimler"
+                onClick={onNotifications}
+                badge={activeNotificationCount}
+                className="hidden sm:grid"
+              />
+            </>
+          ) : null}
           <IconButton icon={<Heart size={20} />} label="Favorilerim" onClick={onFavorites} className="hidden lg:grid" />
 
           <button
             type="button"
             onClick={onToggleTheme}
             className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:h-11 sm:w-11"
-            aria-label={theme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
-            title={theme === 'dark' ? 'Açık mod' : 'Koyu mod'}
+            aria-label={activeTheme === 'dark' ? 'Açık moda geç' : 'Koyu moda geç'}
+            title={activeTheme === 'dark' ? 'Açık mod' : 'Koyu mod'}
           >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {activeTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
           <button
@@ -143,7 +167,7 @@ export default function Header({
             onClick={onPricing}
             className="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-200 md:inline-flex"
           >
-            <Crown size={18} /> Premium
+            <Crown size={18} /> Premium paketleri
           </button>
 
           <button
@@ -162,24 +186,25 @@ export default function Header({
               className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2.5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10 sm:gap-2 sm:px-3 sm:py-3"
             >
               <UserRound size={19} />
-              <span className="hidden xl:inline">{user ? 'Hesabım' : 'Giriş Yap'}</span>
+              <span className="hidden xl:inline">{activeUser ? 'Hesabım' : 'Giriş yap'}</span>
               <ChevronDown size={16} />
             </button>
 
             {accountOpen && (
               <div className="absolute right-0 mt-2 w-[calc(100vw-16px)] max-w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-white/10 dark:bg-slate-900">
-                {user ? (
+                {activeUser ? (
                   <>
                     <div className="px-3 py-2">
                       <div className="text-xs font-black uppercase tracking-wide text-slate-400">Oturum açık</div>
-                      <div className="mt-1 truncate text-sm font-black text-slate-900 dark:text-white">{user.email}</div>
+                      <div className="mt-1 truncate text-sm font-black text-slate-900 dark:text-white">{activeUser.email}</div>
                     </div>
                     <MenuItem onClick={onMyListings}>İlanlarım</MenuItem>
+                    <MenuItem onClick={onProfile}>Profilim</MenuItem>
                     <MenuItem onClick={onFavorites}>Favorilerim</MenuItem>
                     <MenuItem onClick={onMessages}>Mesajlarım</MenuItem>
-                    <MenuItem onClick={onNotifications}>Bildirimler</MenuItem>
-                    {isAdmin && <MenuItem onClick={onAdmin} icon={<Settings size={16} />}>Admin Paneli</MenuItem>}
-                    <MenuItem onClick={onLogout} icon={<LogOut size={16} />} danger>Çıkış Yap</MenuItem>
+                    <MenuItem onClick={onNotifications} badge={activeNotificationCount}>Bildirimler</MenuItem>
+                    {isAdmin && <MenuItem onClick={onAdmin} icon={<Settings size={16} />}>Yönetim paneli</MenuItem>}
+                    <MenuItem onClick={onLogout} icon={<LogOut size={16} />} danger>Çıkış yap</MenuItem>
                   </>
                 ) : (
                   <>
@@ -192,7 +217,7 @@ export default function Header({
                       }}
                       className="mt-1 w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-slate-800"
                     >
-                      Giriş Yap / Üye Ol
+                      Giriş yap / Hesap oluştur
                     </button>
                   </>
                 )}
@@ -238,15 +263,15 @@ function IconButton({ icon, label, onClick, badge = 0, className = '' }) {
     >
       {icon}
       {badge > 0 && (
-        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white">
-          {badge > 99 ? '99+' : badge}
+        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white ring-2 ring-white dark:ring-slate-950">
+          {badge > 9 ? '9+' : badge}
         </span>
       )}
     </button>
   );
 }
 
-function MenuItem({ children, onClick, icon, danger = false }) {
+function MenuItem({ children, onClick, icon, danger = false, badge = 0 }) {
   return (
     <button
       type="button"
@@ -254,7 +279,12 @@ function MenuItem({ children, onClick, icon, danger = false }) {
       className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-black transition ${danger ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/10'}`}
     >
       {icon || <ShieldCheck size={16} className="text-slate-400" />}
-      {children}
+      <span className="min-w-0 flex-1">{children}</span>
+      {badge > 0 ? (
+        <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-black text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
     </button>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase, hasSupabase, getStableSession } from '@/lib/supabase';
 
@@ -11,6 +11,19 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   const [fullName, setFullName] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose?.();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
 
   async function closeAndRefresh() {
     const session = await getStableSession();
@@ -94,19 +107,19 @@ export default function AuthModal({ onClose, onAuthenticated }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <form onSubmit={submit} className="max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={() => onClose?.()}>
+      <form onSubmit={submit} onClick={(event) => event.stopPropagation()} className="max-h-[100dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-6">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-black">
-              {mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
+              {mode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               NouMarket hesabınla devam et.
             </p>
           </div>
 
-          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100">
+          <button type="button" onClick={() => onClose?.()} className="rounded-full p-2 hover:bg-slate-100">
             <X />
           </button>
         </div>
@@ -151,7 +164,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
           disabled={loading}
           className="mt-5 w-full rounded-2xl bg-slate-900 px-5 py-4 text-sm font-black text-white disabled:opacity-60"
         >
-          {loading ? 'İşleniyor...' : mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
+          {loading ? 'İşleniyor...' : mode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}
         </button>
 
         <button
@@ -163,7 +176,7 @@ export default function AuthModal({ onClose, onAuthenticated }) {
           className="mt-4 w-full text-sm font-semibold text-slate-600"
         >
           {mode === 'login'
-            ? 'Hesabın yok mu? Kayıt ol'
+            ? 'Hesabın yok mu? Hesap oluştur'
             : 'Zaten hesabın var mı? Giriş yap'}
         </button>
       </form>

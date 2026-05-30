@@ -1,20 +1,20 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { tryCreateServiceRoleClient } from '@/lib/envGuards';
 import SeoLandingPage from '@/components/seo/SeoLandingPage';
+import { PUBLIC_LISTING_STATUSES } from '@/lib/listingStatus';
 import { getLocationBySlug } from '@/lib/seoTaxonomy';
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noumarket-mvp.vercel.app';
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder-key',
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+import { buildLocationShareMetadata, SITE_URL } from '@/lib/seoMetadata';
 
 async function getListings(locationName) {
+  const { supabase } = tryCreateServiceRoleClient();
+  if (!supabase) {
+    return { listings: [], totalCount: 0 };
+  }
+
   const { data, count, error } = await supabase
     .from('listings')
     .select('*, listing_images(image_url, sort_order)', { count: 'exact' })
-    .eq('status', 'approved')
+    .in('status', PUBLIC_LISTING_STATUSES)
     .eq('location', locationName)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false })
@@ -31,21 +31,7 @@ async function getListings(locationName) {
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const location = getLocationBySlug(slug);
-  if (!location) return {};
-
-  return {
-    title: `${location.name} İlanları | NouMarket`,
-    description: location.description,
-    alternates: { canonical: `${siteUrl}/konum/${location.slug}` },
-    openGraph: {
-      title: `${location.name} İlanları | NouMarket`,
-      description: location.description,
-      url: `${siteUrl}/konum/${location.slug}`,
-      siteName: 'NouMarket',
-      locale: 'tr_TR',
-      type: 'website',
-    },
-  };
+  return buildLocationShareMetadata(location);
 }
 
 export default async function LocationLandingPage({ params }) {
@@ -58,15 +44,15 @@ export default async function LocationLandingPage({ params }) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: `${location.name} İlanları`,
-    description: location.description,
-    url: `${siteUrl}/konum/${location.slug}`,
+    name: `${location.name} ilanları`,
+    description: `${location.name} bölgesindeki satılık, kiralık ve ikinci el ilanları.`,
+    url: `${SITE_URL}/konum/${location.slug}`,
   };
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <SeoLandingPage mode="location" entity={{ ...location, title: `${location.name} İlanları` }} listings={listings} totalCount={totalCount} />
+      <SeoLandingPage mode="location" entity={{ ...location, title: `${location.name} ilanları` }} listings={listings} totalCount={totalCount} />
     </>
   );
 }

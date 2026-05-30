@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bug, Lightbulb, MessageSquare, Send, X } from 'lucide-react';
 import { createFeedbackReport } from '@/lib/feedback';
 
@@ -16,6 +16,19 @@ export default function FeedbackModal({ user, onClose }) {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose?.();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onClose]);
 
   async function submit() {
     if (saving) return;
@@ -42,8 +55,8 @@ export default function FeedbackModal({ user, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-slate-200">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={() => onClose?.()}>
+      <div onClick={(event) => event.stopPropagation()} className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl ring-1 ring-slate-200">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">
@@ -52,7 +65,7 @@ export default function FeedbackModal({ user, onClose }) {
             <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950">Bir sorun ya da fikir bildir</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">Canlı test döneminde her hata raporu ürün kalitesini doğrudan artırır.</p>
           </div>
-          <button onClick={onClose} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50">
+          <button onClick={() => onClose?.()} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm hover:bg-slate-50">
             <X size={20} />
           </button>
         </div>
@@ -63,7 +76,7 @@ export default function FeedbackModal({ user, onClose }) {
             <p className="mt-1 text-sm font-semibold">Bu kayıt admin tarafında incelenebilir. Test kullanıcıları için bu akış kritik.</p>
             <div className="mt-4 flex gap-2">
               <button onClick={() => setSuccess(false)} className="rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-black text-white">Yeni bildirim gönder</button>
-              <button onClick={onClose} className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900">Kapat</button>
+              <button onClick={() => onClose?.()} className="rounded-2xl border border-emerald-200 bg-white px-4 py-2 text-sm font-black text-emerald-900">Kapat</button>
             </div>
           </div>
         ) : (

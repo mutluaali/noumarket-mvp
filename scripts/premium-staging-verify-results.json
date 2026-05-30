@@ -1,0 +1,153 @@
+{
+  "migrationApplied": true,
+  "schema": {
+    "profiles.stripe_customer_id": true,
+    "profiles.stripe_subscription_id": true,
+    "payment_orders.product_type": true,
+    "listings.is_featured": true,
+    "listings.featured_until": true,
+    "listings.is_premium": true,
+    "listings.premium_until": true,
+    "profiles.account_plan": true,
+    "profiles.premium_status": true,
+    "profiles.premium_ends_at": true,
+    "payment_orders": true,
+    "payment_events": true
+  },
+  "stripeConfig": {
+    "hasSecretKey": true,
+    "isTestKey": true,
+    "isLiveKey": false,
+    "hasWebhookSecret": true,
+    "hasPremiumPriceId": false,
+    "premiumMonthlyAmount": "(default 9900 in code)",
+    "hasCronSecret": true
+  },
+  "prerequisites": {
+    "accountPlansMigration": true
+  },
+  "featuredTests": [
+    {
+      "planId": "premium_7",
+      "ok": "2026-06-05T01:17:58.165+00:00",
+      "order": {
+        "status": "paid",
+        "product_type": "featured_listing"
+      },
+      "row": {
+        "is_featured": true,
+        "is_premium": true,
+        "featured_until": "2026-06-05T01:17:58.165+00:00",
+        "premium_until": "2026-06-05T01:17:58.165+00:00",
+        "premium_source": "payment"
+      },
+      "idempotent": true,
+      "orderCount": 1
+    },
+    {
+      "planId": "premium_14",
+      "ok": "2026-06-12T01:18:00.124+00:00",
+      "order": {
+        "status": "paid",
+        "product_type": "featured_listing"
+      },
+      "row": {
+        "is_featured": true,
+        "is_premium": true,
+        "featured_until": "2026-06-12T01:18:00.124+00:00",
+        "premium_until": "2026-06-12T01:18:00.124+00:00",
+        "premium_source": "payment"
+      },
+      "idempotent": true,
+      "orderCount": 1
+    },
+    {
+      "planId": "premium_30",
+      "ok": "2026-06-28T01:18:02.109+00:00",
+      "order": {
+        "status": "paid",
+        "product_type": "featured_listing"
+      },
+      "row": {
+        "is_featured": true,
+        "is_premium": true,
+        "featured_until": "2026-06-28T01:18:02.109+00:00",
+        "premium_until": "2026-06-28T01:18:02.109+00:00",
+        "premium_source": "payment"
+      },
+      "idempotent": true,
+      "orderCount": 1
+    }
+  ],
+  "premiumSellerTests": [],
+  "expiryTests": [
+    {
+      "featured": true,
+      "status": 200,
+      "body": {
+        "success": true,
+        "checkedAt": "2026-05-29T01:18:03.924Z",
+        "expiredCount": 1,
+        "expiredListings": [
+          {
+            "id": "046fa226-614b-42ce-81d8-04d59dc6ddc1",
+            "title": "araba",
+            "premium_until": null,
+            "featured_until": null,
+            "is_premium": false,
+            "is_featured": false
+          }
+        ],
+        "expiredPremiumSellers": []
+      },
+      "cleared": {
+        "is_featured": false,
+        "is_premium": false
+      }
+    },
+    {
+      "premiumSeller": true,
+      "after": {
+        "account_plan": "free",
+        "premium_status": "inactive"
+      }
+    }
+  ],
+  "adminRevenueTests": [
+    {
+      "dbPaidOrders": 3,
+      "revenueAllTime": 3000,
+      "revenueThisMonth": 3000,
+      "activeFeaturedListingsDb": 1
+    }
+  ],
+  "securityTests": [
+    {
+      "adminRevenueAnonymousStatus": 401
+    },
+    {
+      "crossUserCheckout": {
+        "status": 403,
+        "error": "Sadece kendi ilanını premium yapabilirsin."
+      }
+    },
+    {
+      "checkoutMissingListingStatus": 500
+    },
+    {
+      "verifyPaymentInvalidSession": {
+        "status": 500,
+        "error": "No such checkout.session: cs_test_verify_fallback_1780017487713"
+      }
+    }
+  ],
+  "failed": [
+    {
+      "name": "Webhook invalid signature rejected",
+      "detail": "status 500"
+    }
+  ],
+  "warnings": [
+    "Premium Seller DB tests require manual Stripe checkout — account_plan columns present"
+  ]
+}

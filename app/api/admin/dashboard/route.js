@@ -1,45 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-
-function makeAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL eksik.');
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY eksik.');
-  return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-}
-
-function getAccessToken(request) {
-  const authHeader = request.headers.get('authorization') || '';
-  if (authHeader.toLowerCase().startsWith('bearer ')) return authHeader.slice(7).trim();
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(/sb-[^=]+-auth-token=([^;]+)/);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(decodeURIComponent(match[1]));
-    return parsed?.access_token || parsed?.currentSession?.access_token || parsed?.session?.access_token || null;
-  } catch {
-    return null;
-  }
-}
-
-async function requireAdmin(request, supabaseAdmin) {
-  const token = getAccessToken(request);
-  if (!token) throw new Error('Admin oturumu bulunamadı.');
-  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData?.user?.id) throw new Error('Admin oturumu doğrulanamadı.');
-
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id, role, full_name')
-    .eq('id', authData.user.id)
-    .maybeSingle();
-
-  if (profileError) throw profileError;
-  if (!['admin', 'moderator'].includes(profile?.role)) throw new Error('Admin yetkin yok.');
-  return { user: authData.user, profile };
-}
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
+import { requireAdmin } from '@/lib/adminAuth';
 
 function safeCount(rows) {
   return Array.isArray(rows) ? rows.length : 0;
@@ -47,8 +8,16 @@ function safeCount(rows) {
 
 export async function GET(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
-    await requireAdmin(request, supabaseAdmin);
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
+    const auth = await requireAdmin(request, supabaseAdmin);
+    if (auth.error) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
 
     const [listingsRes, reportsRes, paymentsRes, profilesRes, analyticsRes] = await Promise.all([
       supabaseAdmin.from('listings').select('id, status, is_featured, is_premium, featured_until, premium_until, view_count, views, created_at, title, category, location, price, currency').order('created_at', { ascending: false }).limit(200),
@@ -123,6 +92,6 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('api/admin/dashboard error:', error);
-    return NextResponse.json({ error: error.message || 'Admin dashboard yüklenemedi.' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Genel bakış yüklenemedi.' }, { status: 500 });
   }
 }

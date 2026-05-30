@@ -1,15 +1,23 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, ChevronRight, Grid2X2 } from 'lucide-react';
 import { CATEGORY_TREE, findCategoryNode, formatCount } from '@/lib/categorySchema';
 
-function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, onSelect, categoryCounts = {} }) {
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
+function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, onSelect, categoryCounts = {}, countsReady = false }) {
   const isOpen = openIds.has(node.id);
   const isSelected = selectedCategoryId === node.id;
   const hasChildren = Boolean(node.children?.length);
   const isMain = level === 0;
-  const displayCount = categoryCounts[node.id] ?? 0;
+  const displayCount = countsReady ? (categoryCounts[node.id] ?? 0) : 0;
 
   const levelStyle = level === 0
     ? 'px-3 py-2.5 text-sm font-black'
@@ -60,6 +68,7 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
               onToggle={onToggle}
               onSelect={onSelect}
               categoryCounts={categoryCounts}
+              countsReady={countsReady}
             />
           ))}
         </div>
@@ -68,7 +77,8 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
   );
 }
 
-export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory, categoryCounts = {} }) {
+export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory, categoryCounts = {}, onPremiumClick, className = '' }) {
+  const countsReady = useHydrated();
   const selected = selectedCategoryId ? findCategoryNode(selectedCategoryId) : null;
   const selectedPathIds = useMemo(() => selected?.path?.map((item) => item.id) || [], [selected]);
   const [openIds, setOpenIds] = useState(new Set());
@@ -96,19 +106,21 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
     onSelectCategory(null);
   }
 
+  const shellClassName = className || 'hidden w-full self-start rounded-3xl border border-[var(--field-border)] bg-[var(--surface-glass)] p-3 shadow-xl backdrop-blur lg:sticky lg:top-[88px] lg:z-30 lg:block lg:min-h-[calc(100dvh-104px)]';
+
   return (
-    <aside className="sticky top-[76px] hidden h-[calc(100vh-92px)] w-[300px] shrink-0 overflow-y-auto rounded-3xl border border-slate-200 bg-white/90 p-3 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-900/85 dark:shadow-black/30 lg:block">
+    <aside data-marketplace-sidebar="true" className={shellClassName}>
       <div className="mb-3 flex items-center justify-between border-b border-slate-100 px-2 pb-3 dark:border-white/10">
         <div>
           <h2 className="text-sm font-black text-slate-900 dark:text-white">Kategoriler</h2>
-          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Ana kategoriye tikla, alt secenekleri ac.</p>
+          <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Ana kategoriye tıkla, alt seçenekleri aç.</p>
         </div>
         <button
           type="button"
           onClick={resetAll}
           className="rounded-xl bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15"
         >
-          Tumu
+          Tüm kategoriler
         </button>
       </div>
 
@@ -119,7 +131,7 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
           !selectedCategoryId ? 'bg-cyan-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
         }`}
       >
-        <Grid2X2 size={16} /> Tum Ilanlar
+        <Grid2X2 size={16} /> Tüm ilanlar
       </button>
 
       <div className="space-y-1.5">
@@ -132,15 +144,16 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
             onToggle={toggleNode}
             onSelect={onSelectCategory}
             categoryCounts={categoryCounts}
+            countsReady={countsReady}
           />
         ))}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm shadow-sm dark:border-amber-300/20 dark:bg-amber-300/10">
+      <div className="mt-3 shrink-0 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm shadow-sm dark:border-amber-300/20 dark:bg-amber-300/10">
         <div className="text-2xl">👑</div>
-        <div className="mt-2 font-black text-amber-800 dark:text-amber-200">Premium'a Yuksel</div>
-        <p className="mt-1 text-xs leading-5 text-amber-700/80 dark:text-amber-100/70">Daha fazla gorunurluk, oncelikli destek ve ozel avantajlar.</p>
-        <button type="button" className="mt-3 w-full rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black text-white hover:bg-cyan-700">Premium'u Kesfet</button>
+        <div className="mt-1 font-black text-amber-800 dark:text-amber-200">Öne çıkan paketlere geç</div>
+        <p className="mt-1 text-xs leading-4 text-amber-700/80 dark:text-amber-100/70">Daha fazla görünürlük, öncelikli destek ve satıcı avantajları.</p>
+        <button type="button" onClick={onPremiumClick} className="mt-2 w-full cursor-pointer rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black text-white transition hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-300">Premium paketleri</button>
       </div>
     </aside>
   );

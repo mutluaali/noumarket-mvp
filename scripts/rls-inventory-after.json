@@ -1,0 +1,162 @@
+{
+  "policies": [
+    {
+      "tablename": "conversations",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_conversations_participant_insert"
+    },
+    {
+      "tablename": "conversations",
+      "command": "SELECT",
+      "policy_count": "1",
+      "policy_names": "nm_conversations_participant_select"
+    },
+    {
+      "tablename": "conversations",
+      "command": "UPDATE",
+      "policy_count": "1",
+      "policy_names": "nm_conversations_participant_update"
+    },
+    {
+      "tablename": "listing_images",
+      "command": "ALL",
+      "policy_count": "1",
+      "policy_names": "nm_listing_images_staff_all"
+    },
+    {
+      "tablename": "listing_images",
+      "command": "DELETE",
+      "policy_count": "1",
+      "policy_names": "nm_listing_images_owner_delete"
+    },
+    {
+      "tablename": "listing_images",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_listing_images_owner_insert"
+    },
+    {
+      "tablename": "listing_images",
+      "command": "SELECT",
+      "policy_count": "1",
+      "policy_names": "nm_listing_images_public_read"
+    },
+    {
+      "tablename": "listing_reports",
+      "command": "ALL",
+      "policy_count": "1",
+      "policy_names": "nm_listing_reports_staff_all"
+    },
+    {
+      "tablename": "listing_reports",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_listing_reports_insert_own"
+    },
+    {
+      "tablename": "listing_reports",
+      "command": "SELECT",
+      "policy_count": "1",
+      "policy_names": "nm_listing_reports_select_own"
+    },
+    {
+      "tablename": "listings",
+      "command": "ALL",
+      "policy_count": "1",
+      "policy_names": "nm_listings_staff_all"
+    },
+    {
+      "tablename": "listings",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_listings_owner_insert"
+    },
+    {
+      "tablename": "listings",
+      "command": "SELECT",
+      "policy_count": "2",
+      "policy_names": "nm_listings_owner_read | nm_listings_public_read"
+    },
+    {
+      "tablename": "listings",
+      "command": "UPDATE",
+      "policy_count": "1",
+      "policy_names": "nm_listings_owner_update"
+    },
+    {
+      "tablename": "messages",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_messages_participant_insert"
+    },
+    {
+      "tablename": "messages",
+      "command": "SELECT",
+      "policy_count": "1",
+      "policy_names": "nm_messages_participant_select"
+    },
+    {
+      "tablename": "messages",
+      "command": "UPDATE",
+      "policy_count": "1",
+      "policy_names": "nm_messages_participant_update"
+    },
+    {
+      "tablename": "profiles",
+      "command": "ALL",
+      "policy_count": "1",
+      "policy_names": "nm_profiles_staff_all"
+    },
+    {
+      "tablename": "profiles",
+      "command": "INSERT",
+      "policy_count": "1",
+      "policy_names": "nm_profiles_insert_own"
+    },
+    {
+      "tablename": "profiles",
+      "command": "SELECT",
+      "policy_count": "2",
+      "policy_names": "nm_profiles_public_seller_read | nm_profiles_select_own"
+    },
+    {
+      "tablename": "profiles",
+      "command": "UPDATE",
+      "policy_count": "1",
+      "policy_names": "nm_profiles_update_own"
+    }
+  ],
+  "storage": [
+    {
+      "policyname": "nm_storage_listing_images_owner_delete",
+      "command": "DELETE",
+      "using_expression": "((bucket_id = 'listing-images'::text) AND ((storage.foldername(name))[1] = 'listings'::text) AND ((storage.foldername(name))[2] = (auth.uid())::text))",
+      "with_check_expression": null
+    },
+    {
+      "policyname": "nm_storage_listing_images_owner_insert",
+      "command": "INSERT",
+      "using_expression": null,
+      "with_check_expression": "((bucket_id = 'listing-images'::text) AND ((storage.foldername(name))[1] = 'listings'::text) AND ((storage.foldername(name))[2] = (auth.uid())::text))"
+    },
+    {
+      "policyname": "nm_storage_listing_images_owner_update",
+      "command": "UPDATE",
+      "using_expression": "((bucket_id = 'listing-images'::text) AND ((storage.foldername(name))[1] = 'listings'::text) AND ((storage.foldername(name))[2] = (auth.uid())::text))",
+      "with_check_expression": "((bucket_id = 'listing-images'::text) AND ((storage.foldername(name))[1] = 'listings'::text) AND ((storage.foldername(name))[2] = (auth.uid())::text))"
+    },
+    {
+      "policyname": "nm_storage_listing_images_public_read",
+      "command": "SELECT",
+      "using_expression": "(bucket_id = 'listing-images'::text)",
+      "with_check_expression": null
+    },
+    {
+      "policyname": "nm_storage_listing_images_staff_all",
+      "command": "ALL",
+      "using_expression": "((bucket_id = 'listing-images'::text) AND is_platform_admin(auth.uid()))",
+      "with_check_expression": "((bucket_id = 'listing-images'::text) AND is_platform_admin(auth.uid()))"
+    }
+  ]
+}

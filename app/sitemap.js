@@ -1,13 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
+import { getServiceRoleConfigError, tryCreateServiceRoleClient } from '@/lib/envGuards';
 import { seoCategories, seoLocations } from '@/lib/seoTaxonomy';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noumarket-mvp.vercel.app';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder-key',
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
 
 export default async function sitemap() {
   const now = new Date();
@@ -28,7 +22,14 @@ export default async function sitemap() {
     })),
   ];
 
+  if (getServiceRoleConfigError()) {
+    return staticRoutes;
+  }
+
   try {
+    const { supabase } = tryCreateServiceRoleClient();
+    if (!supabase) return staticRoutes;
+
     const { data, error } = await supabase
       .from('listings')
       .select('id, updated_at, created_at, is_featured')

@@ -1,26 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 
-
-function makeAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL eksik.');
-  }
-
-  if (!serviceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY eksik.');
-  }
-
-  return createClient(url, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
 
 function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
@@ -57,9 +37,23 @@ function isMissingColumn(error) {
   return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || error?.details || '');
 }
 
+function withTimeout(promise, timeoutMs, message) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export async function GET(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     const token = getAccessToken(request);
 
     if (!token) {
@@ -69,8 +63,11 @@ export async function GET(request) {
       );
     }
 
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.getUser(token);
+    const { data: authData, error: authError } = await withTimeout(
+      supabaseAdmin.auth.getUser(token),
+      3500,
+      'Oturum dogrulama zaman asimina ugradi.'
+    );
 
     if (authError || !authData?.user?.id) {
       return NextResponse.json(
@@ -98,6 +95,9 @@ export async function GET(request) {
       'seller_email',
       'image_url',
       'status',
+      'approval_status',
+      'approved_at',
+      'rejected_reason',
       'is_featured',
       'featured_until',
       'view_count',
@@ -107,20 +107,28 @@ export async function GET(request) {
       'attributes',
     ].join(',');
 
-    let { data: listings, error: listingsError } = await supabaseAdmin
-      .from('listings')
-      .select(listingSelect)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(80);
-
-    if (listingsError && isMissingColumn(listingsError)) {
-      ({ data: listings, error: listingsError } = await supabaseAdmin
+    let { data: listings, error: listingsError } = await withTimeout(
+      supabaseAdmin
         .from('listings')
-        .select('*')
+        .select(listingSelect)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(80));
+        .limit(80),
+      4500,
+      'Ilanlar sorgusu zaman asimina ugradi.'
+    );
+
+    if (listingsError && isMissingColumn(listingsError)) {
+      ({ data: listings, error: listingsError } = await withTimeout(
+        supabaseAdmin
+          .from('listings')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(80),
+        4500,
+        'Ilanlar sorgusu zaman asimina ugradi.'
+      ));
     }
 
     if (listingsError) {
@@ -131,31 +139,20 @@ export async function GET(request) {
     const listingIds = listingRows.map((item) => item.id).filter(Boolean);
 
     const imagesByListingId = {};
-    const favoriteCountByListingId = {};
-    const conversationCountByListingId = {};
 
     if (listingIds.length > 0) {
-      const imagesRequest = supabaseAdmin
-        .from('listing_images')
-        .select('listing_id, image_url, sort_order')
-        .in('listing_id', listingIds)
-        .order('sort_order', { ascending: true });
-
-      const favoritesRequest = supabaseAdmin
-        .from('favorites')
-        .select('listing_id')
-        .in('listing_id', listingIds);
-
-      const conversationsRequest = supabaseAdmin
-        .from('conversations')
-        .select('id, listing_id')
-        .in('listing_id', listingIds);
-
-      const [
-        { data: images, error: imagesError },
-        { data: favorites, error: favoritesError },
-        { data: conversations, error: conversationsError },
-      ] = await Promise.all([imagesRequest, favoritesRequest, conversationsRequest]);
+      const { data: images, error: imagesError } = await withTimeout(
+        supabaseAdmin
+          .from('listing_images')
+          .select('listing_id, image_url, sort_order')
+          .in('listing_id', listingIds)
+          .order('sort_order', { ascending: true }),
+        3500,
+        'Ilan fotograf sorgusu zaman asimina ugradi.'
+      ).catch((error) => {
+        console.warn('listing_images query timeout:', error.message);
+        return { data: [], error: null };
+      });
 
       if (imagesError) {
         console.warn('listing_images query error:', imagesError.message);
@@ -171,29 +168,11 @@ export async function GET(request) {
           sort_order: image.sort_order,
         });
       }
-
-      if (favoritesError) {
-        console.warn('favorites count query error:', favoritesError.message);
-      }
-
-      for (const row of favorites || []) {
-        favoriteCountByListingId[row.listing_id] = (favoriteCountByListingId[row.listing_id] || 0) + 1;
-      }
-
-      if (conversationsError) {
-        console.warn('conversations count query error:', conversationsError.message);
-      }
-
-      for (const row of conversations || []) {
-        conversationCountByListingId[row.listing_id] = (conversationCountByListingId[row.listing_id] || 0) + 1;
-      }
     }
 
     const data = listingRows.map((listing) => ({
       ...listing,
       listing_images: imagesByListingId[listing.id] || [],
-      favorite_count: favoriteCountByListingId[listing.id] || 0,
-      conversation_count: conversationCountByListingId[listing.id] || 0,
     }));
 
     return NextResponse.json({ data });

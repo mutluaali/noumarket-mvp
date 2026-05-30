@@ -21,7 +21,11 @@ export default function OffersModal({ user, onClose }) {
   const [busy, setBusy] = useState('');
 
   async function loadOffers() {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setOffers([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setErrorText('');
     try {

@@ -17,7 +17,7 @@ export default function SellerTrustBadge({ listing }) {
   return (
     <div className={`rounded-2xl p-3 text-xs font-bold ring-1 ${cls}`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2"><Icon size={15} /> {trust.level}</span>
+        <span className="inline-flex items-center gap-2"><Icon size={15} /> Güven skoru · {trust.level}</span>
         <span>{trust.score}/100</span>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] opacity-80">

@@ -6,16 +6,19 @@ import Link from 'next/link';
 export default function PaymentSuccessPage() {
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState('Ödeme doğrulanıyor...');
+  const [productType, setProductType] = useState('featured_listing');
 
   useEffect(() => {
     async function verifyPayment() {
       try {
         const params = new URLSearchParams(window.location.search);
         const sessionId = params.get('session_id');
+        const product = params.get('product') || 'featured_listing';
+        setProductType(product);
 
         if (!sessionId) {
           setStatus('error');
-          setMessage('Session ID bulunamadı. Premium işlem doğrulanamadı.');
+          setMessage('Oturum kimliği bulunamadı. Ödeme doğrulanamadı.');
           return;
         }
 
@@ -34,7 +37,11 @@ export default function PaymentSuccessPage() {
         }
 
         setStatus('success');
-        setMessage('Ödeme başarılı. İlan premium yapıldı.');
+        if (data.productType === 'premium_seller' || product === 'premium_seller') {
+          setMessage('Premium Satıcı aboneliğin aktif. Rozet ve limitlerin güncellendi.');
+        } else {
+          setMessage('Ödeme başarılı. İlanın öne çıkarıldı ve vitrinde görünecek.');
+        }
       } catch (error) {
         setStatus('error');
         setMessage(error.message || 'Ödeme doğrulanamadı.');
@@ -52,7 +59,9 @@ export default function PaymentSuccessPage() {
         </div>
 
         <h1 className="text-2xl font-bold text-slate-900 mb-3">
-          {status === 'success' ? 'Premium aktif' : status === 'error' ? 'İşlem kontrol edilmeli' : 'Kontrol ediliyor'}
+          {status === 'success'
+            ? (productType === 'premium_seller' ? 'Premium Satıcı aktif' : 'Öne çıkan ilan aktif')
+            : status === 'error' ? 'İşlem kontrol edilmeli' : 'Kontrol ediliyor'}
         </h1>
 
         <p className="text-slate-600 mb-6">{message}</p>

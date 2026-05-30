@@ -1,0 +1,45 @@
+{
+  "passed": [
+    {
+      "name": "GET /api/payments/providers",
+      "detail": ""
+    },
+    {
+      "name": "Provider order bank_transfer first",
+      "detail": ""
+    },
+    {
+      "name": "EpayNC disabled when not configured",
+      "detail": ""
+    },
+    {
+      "name": "EpayNC checkout blocked when disabled",
+      "detail": ""
+    },
+    {
+      "name": "Admin pending payments requires auth",
+      "detail": ""
+    },
+    {
+      "name": "Normal user cannot access admin pending payments",
+      "detail": ""
+    },
+    {
+      "name": "Bank transfer blocked without bank env config",
+      "detail": ""
+    },
+    {
+      "name": "User cannot pay for another users listing",
+      "detail": ""
+    },
+    {
+      "name": "Suspended user cannot create payment request",
+      "detail": ""
+    },
+    {
+      "name": "Stripe routes still reachable with providers API",
+      "detail": ""
+    }
+  ],
+  "failed": []
+}

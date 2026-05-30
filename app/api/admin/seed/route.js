@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 import { seedListings } from '@/lib/seedListings';
 
-
-function makeAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL eksik.');
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY eksik.');
-  return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-}
 
 function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
@@ -19,9 +11,9 @@ function getAccessToken(request) {
 
 async function requireAdmin(request, supabaseAdmin) {
   const token = getAccessToken(request);
-  if (!token) throw new Error('Admin oturumu bulunamadı.');
+  if (!token) throw new Error('Yönetim oturumu bulunamadı.');
   const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-  if (authError || !authData?.user?.id) throw new Error('Admin oturumu doğrulanamadı.');
+  if (authError || !authData?.user?.id) throw new Error('Yönetim oturumu doğrulanamadı.');
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
@@ -30,7 +22,7 @@ async function requireAdmin(request, supabaseAdmin) {
     .maybeSingle();
 
   if (profileError) throw profileError;
-  if (!['admin', 'moderator'].includes(profile?.role)) throw new Error('Admin yetkin yok.');
+  if (!['admin', 'moderator'].includes(profile?.role)) throw new Error('Yönetim paneline erişim yetkin yok.');
   return authData.user;
 }
 
@@ -69,7 +61,12 @@ function withDates(item, index) {
 
 export async function GET(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     await requireAdmin(request, supabaseAdmin);
 
     const { count, error } = await supabaseAdmin
@@ -87,7 +84,12 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     await requireAdmin(request, supabaseAdmin);
 
     const body = await request.json().catch(() => ({}));

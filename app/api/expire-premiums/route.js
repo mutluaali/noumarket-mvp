@@ -1,88 +1,85 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'build-placeholder-service-role-key',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 
 function isAuthorized(request) {
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = String(process.env.CRON_SECRET || '').trim();
 
-  // Lokal geliştirmede CRON_SECRET zorunlu olmasın.
   if (!cronSecret && process.env.NODE_ENV !== 'production') {
     return true;
   }
 
-  // Production'da CRON_SECRET varsa Authorization header kontrol edilir.
   if (cronSecret) {
-    const authHeader = request.headers.get('authorization');
-    return authHeader === `Bearer ${cronSecret}`;
+    const authHeader = String(request.headers.get('authorization') || '').trim();
+    const token = authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : authHeader;
+    return token === cronSecret;
   }
 
-  // Vercel Cron çağrıları için fallback.
   const userAgent = request.headers.get('user-agent') || '';
   return userAgent.includes('vercel-cron');
 }
 
 export async function GET(request) {
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      return NextResponse.json(
-        { error: 'NEXT_PUBLIC_SUPABASE_URL eksik.' },
-        { status: 500 }
-      );
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { error: 'SUPABASE_SERVICE_ROLE_KEY eksik.' },
-        { status: 500 }
-      );
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
     }
 
     if (!isAuthorized(request)) {
-      return NextResponse.json(
-        { error: 'Yetkisiz istek.' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Yetkisiz istek.' }, { status: 401 });
     }
 
+    const supabaseAdmin = createServiceRoleClient();
     const now = new Date().toISOString();
 
-    const { data, error } = await supabaseAdmin
+    const { data: expiredListings, error } = await supabaseAdmin
       .from('listings')
       .update({
         is_premium: false,
         is_featured: false,
+        premium_until: null,
+        featured_until: null,
+        updated_at: now,
       })
-      .lt('premium_until', now)
-      .or('is_premium.eq.true,is_featured.eq.true')
-      .select('id, title, premium_until, is_premium, is_featured');
+      .or(`and(is_featured.eq.true,featured_until.lt.${now}),and(is_premium.eq.true,premium_until.lt.${now})`)
+      .select('id, title, premium_until, featured_until, is_premium, is_featured');
 
     if (error) {
       throw error;
     }
 
+    const { data: expiredSellers, error: sellerError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        account_plan: 'free',
+        premium_status: 'inactive',
+        listing_photo_limit: 5,
+        can_add_video: false,
+        has_storefront: false,
+        boost_discount_percent: 0,
+        updated_at: now,
+      })
+      .eq('account_plan', 'premium_seller')
+      .eq('premium_status', 'active')
+      .lt('premium_ends_at', now)
+      .select('id, premium_ends_at');
+
+    if (sellerError && !/column|schema cache|Could not find/i.test(sellerError.message || '')) {
+      throw sellerError;
+    }
+
     return NextResponse.json({
       success: true,
       checkedAt: now,
-      expiredCount: data?.length || 0,
-      expiredListings: data || [],
+      expiredCount: expiredListings?.length || 0,
+      expiredListings: expiredListings || [],
+      expiredPremiumSellers: expiredSellers || [],
     });
   } catch (error) {
     console.error('expire-premiums error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Premium süre kontrolü başarısız.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Premium süre kontrolü başarısız.' }, { status: 500 });
   }
 }
 

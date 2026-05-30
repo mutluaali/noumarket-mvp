@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'build-placeholder-service-role-key',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-);
 
 const listingSelect = '*, listing_images(image_url, sort_order)';
 
 export async function GET(_request, context) {
   try {
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabase = createServiceRoleClient();
     const params = await context.params;
     const id = params?.id;
 

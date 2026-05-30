@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Anonymous can read approved listings",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Anonymous cannot read pending listings",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Anonymous cannot read rejected listings",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Owner can create listing",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Owner can read own pending listing",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Owner cannot read another user pending listing",
+    "passed": true,
+    "detail": "rows=0"
+  },
+  {
+    "name": "Owner cannot client-update approved listing",
+    "passed": true,
+    "detail": "title=rls-verify-1780020890123 approved-for-update"
+  },
+  {
+    "name": "My Listings API edit sends approved listing back to pending",
+    "passed": true,
+    "detail": "status=pending"
+  },
+  {
+    "name": "Admin can reject listing",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Moderator can approve listing",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Normal user cannot approve another user listing",
+    "passed": true,
+    "detail": "status=pending"
+  },
+  {
+    "name": "Chat participant can create conversation",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Chat participant can read conversation",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Chat participant can send message",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Non-participant cannot read messages",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Non-participant cannot send messages",
+    "passed": true,
+    "detail": "new row violates row-level security policy for table \"messages\""
+  },
+  {
+    "name": "User can create report",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "User can read only own reports",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "Staff can resolve report",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "User can upload to listings/{own_uid}/...",
+    "passed": true,
+    "detail": ""
+  },
+  {
+    "name": "User cannot upload to listings/{other_uid}/...",
+    "passed": true,
+    "detail": "new row violates row-level security policy"
+  }
+]

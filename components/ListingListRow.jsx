@@ -22,7 +22,7 @@ export default function ListingListRow({ item, onClick, onFavorite, isFavorite, 
       <div className="relative h-28 overflow-hidden rounded-lg bg-slate-100">
         <OptimizedImage src={item.image} alt={item.title} className="object-cover transition group-hover:scale-105" sizes="154px" />
         <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white"><Camera size={11} /> {imageCount(item)}</span>
-        {item.isFeatured && <span className="absolute left-1.5 top-1.5 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-amber-950"><Crown size={10} className="inline" /> Premium</span>}
+        {item.isFeatured && <span className="absolute left-1.5 top-1.5 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-amber-950"><Crown size={10} className="inline" /> Öne çıkan</span>}
       </div>
 
       <div className="min-w-0 py-1">

@@ -1,13 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-function makeAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder-service-role-key';
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 
 function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
@@ -37,7 +29,12 @@ async function getUserFromRequest(request, supabaseAdmin) {
 
 export async function GET(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     const { user, error: userError } = await getUserFromRequest(request, supabaseAdmin);
     if (userError) return NextResponse.json({ error: userError, data: [] }, { status: 401 });
 

@@ -46,6 +46,8 @@ alter table public.listings add column if not exists currency text default 'XPF'
 alter table public.listings add column if not exists metadata jsonb default '{}'::jsonb;
 alter table public.listings add column if not exists featured_until timestamptz;
 alter table public.listings add column if not exists view_count integer default 0;
+-- Admin moderation note visible to the seller when status = rejected.
+alter table public.listings add column if not exists rejected_reason text;
 
 -- 3) Çoklu ilan fotoğrafları
 create table if not exists public.listing_images (

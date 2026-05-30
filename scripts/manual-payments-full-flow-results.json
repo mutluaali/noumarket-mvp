@@ -1,0 +1,288 @@
+{
+  "featuredBankTransfer": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "Bank transfer order created",
+        "ok": true,
+        "detail": "200"
+      },
+      {
+        "name": "provider=bank_transfer",
+        "ok": true,
+        "detail": "bank_transfer"
+      },
+      {
+        "name": "status=pending_manual_review",
+        "ok": true,
+        "detail": "pending_manual_review"
+      },
+      {
+        "name": "product_type=featured_listing",
+        "ok": true,
+        "detail": "featured_listing"
+      },
+      {
+        "name": "amount=1500 XPF",
+        "ok": true,
+        "detail": "1500 XPF"
+      },
+      {
+        "name": "listing_id set",
+        "ok": true,
+        "detail": "752b3922-2689-46ae-a2e4-d37424632f2f"
+      },
+      {
+        "name": "reference NM-*",
+        "ok": true,
+        "detail": "NM-2026-666136"
+      },
+      {
+        "name": "Listing not featured before approval",
+        "ok": true,
+        "detail": "false"
+      },
+      {
+        "name": "Order visible in admin pending list",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Admin mark paid succeeds",
+        "ok": true,
+        "detail": "{\"ok\":true,\"result\":{\"alreadyProcessed\":false,\"productType\":\"featured_listing\",\"listing\":{\"id\":\"752b3922-2689-46ae-a2e4-d37424632f2f\",\"title\":\"x\",\"user_id\":\"92f11c50-2eb8-4a32-bace-e72fc0789df1\",\"is_premium\":true,\"is_featured\":true,\"premium_until\":\"2026-06-05T23:47:01.564+00:00\",\"featured_until\":\"2026-06-05T23:47:01.564+00:00\"},\"listingId\":\"752b3922-2689-46ae-a2e4-d37424632f2f\",\"userId\":\"92f11c50-2eb8-4a32-bace-e72fc0789df1\",\"premiumDays\":7,\"planId\":\"premium_7\",\"premiumUntil\":\"2026-06-05T23:47:01.564Z\"}}"
+      },
+      {
+        "name": "payment_order.status=paid",
+        "ok": true,
+        "detail": "paid"
+      },
+      {
+        "name": "paid_at set",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "reviewed_by set",
+        "ok": true,
+        "detail": "cbfc15bd-68a0-44e9-97f2-be646bcaadf2"
+      },
+      {
+        "name": "listing.is_featured=true",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "featured_until set",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Listing in featured rail query",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Premium badge flag (is_premium)",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "featuredRejectFlow": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "Second featured bank transfer created",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Admin reject succeeds",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "status=rejected",
+        "ok": true,
+        "detail": "rejected"
+      },
+      {
+        "name": "rejection_reason saved",
+        "ok": true,
+        "detail": "Virement non reçu - test staging"
+      },
+      {
+        "name": "Listing not featured after reject",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "User can fetch rejected order state",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "premiumSellerBankTransfer": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "User not premium before request",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Premium seller bank transfer created",
+        "ok": true,
+        "detail": "{\"ok\":true,\"orderId\":\"24b44694-23c5-493c-8e7a-324335bf3588\",\"reference\":\"NM-2026-966799\",\"amount\":9900,\"currency\":\"XPF\",\"productType\":\"premium_seller\",\"plan\":\"premium_seller_monthly\",\"status\":\"pending_manual_review\",\"paymentInstructions\":{\"reference\":\"NM-2026-966799\",\"accountName\":\"NouMarket\",\"ibanOrRib\":\"TEST-RIB-123456\",\"bankName\":\"YOUR_TEST_BANK\",\"instructions\":\"Veuillez indiquer la référence de paiement dans le libellé du virement.\"},\"redirectUrl\":\"/payment-pending?orderId=24b44694-23c5-493c-8e7a-324335bf3588\"}"
+      },
+      {
+        "name": "provider=bank_transfer",
+        "ok": true,
+        "detail": "bank_transfer"
+      },
+      {
+        "name": "status=pending_manual_review",
+        "ok": true,
+        "detail": "pending_manual_review"
+      },
+      {
+        "name": "product_type=premium_seller",
+        "ok": true,
+        "detail": "premium_seller"
+      },
+      {
+        "name": "amount=9900 XPF",
+        "ok": true,
+        "detail": "9900 XPF"
+      },
+      {
+        "name": "reference NM-*",
+        "ok": true,
+        "detail": "NM-2026-966799"
+      },
+      {
+        "name": "Not premium before admin approval",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Admin mark paid succeeds",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "account_plan=premium_seller",
+        "ok": true,
+        "detail": "premium_seller"
+      },
+      {
+        "name": "premium_status=active",
+        "ok": true,
+        "detail": "active"
+      },
+      {
+        "name": "premium_ends_at set",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "listing_photo_limit increased",
+        "ok": true,
+        "detail": "20"
+      }
+    ]
+  },
+  "epayncDisabledState": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "Providers API ok",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "EpayNC appears second",
+        "ok": true,
+        "detail": "bank_transfer,epaync"
+      },
+      {
+        "name": "EpayNC disabled/coming soon",
+        "ok": true,
+        "detail": "Bientôt disponible"
+      },
+      {
+        "name": "EpayNC checkout blocked (503)",
+        "ok": true,
+        "detail": "503"
+      },
+      {
+        "name": "No fake EpayNC order created",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "securityTests": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "Foreign listing blocked",
+        "ok": true,
+        "detail": "403"
+      },
+      {
+        "name": "Normal user cannot access admin pending",
+        "ok": true,
+        "detail": "403"
+      },
+      {
+        "name": "Client cannot set amount/status/provider",
+        "ok": true,
+        "detail": "1500/bank_transfer/pending_manual_review"
+      },
+      {
+        "name": "Admin/moderator can access pending",
+        "ok": true,
+        "detail": "200"
+      },
+      {
+        "name": "Stripe checkout route still works",
+        "ok": true,
+        "detail": "200"
+      },
+      {
+        "name": "Suspended user blocked",
+        "ok": true,
+        "detail": "403 USER_SUSPENDED"
+      }
+    ]
+  },
+  "idempotency": {
+    "status": "PASS",
+    "steps": [
+      {
+        "name": "Duplicate featured mark-paid returns alreadyProcessed",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "featured_until unchanged on duplicate approve",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "Duplicate premium mark-paid returns alreadyProcessed",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "premium_ends_at unchanged on duplicate approve",
+        "ok": true,
+        "detail": ""
+      }
+    ]
+  },
+  "failedSteps": []
+}

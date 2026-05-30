@@ -27,7 +27,7 @@ export default function ModerationQualityPanel() {
     setErrorText('');
     try {
       const token = await getToken();
-      if (!token) throw new Error('Admin kontrolü için tekrar giriş yap.');
+      if (!token) throw new Error('Yönetim paneli için tekrar giriş yap.');
       const response = await fetch('/api/admin/moderation-quality', {
         headers: { Authorization: `Bearer ${token}` },
       });

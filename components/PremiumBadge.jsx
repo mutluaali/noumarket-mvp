@@ -4,12 +4,12 @@ export default function PremiumBadge({ listing }) {
   const active = listing?.isFeatured || listing?.is_featured;
   if (!active) return null;
 
-  let text = 'Premium';
-  const until = listing?.featured_until || listing?.featuredUntil;
+  let text = 'Öne çıkan ilan';
+  const until = listing?.featured_until || listing?.featuredUntil || listing?.premium_until;
 
   if (until) {
     const days = Math.ceil((new Date(until).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (days > 0) text = `Premium · ${days} gün`;
+    if (days > 0) text = `Öne çıkan · ${days} gün kaldı`;
   }
 
   return (

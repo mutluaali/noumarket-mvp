@@ -10,12 +10,14 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [verifyingPhone, setVerifyingPhone] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [successText, setSuccessText] = useState('');
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     store_name: profile?.store_name || '',
     phone: profile?.phone || '',
     location: profile?.location || '',
     bio: profile?.bio || '',
+    avatar_url: profile?.avatar_url || '',
     phone_verified: profile?.phone_verified || false,
     phone_verification_requested_at: profile?.phone_verification_requested_at || null,
   });
@@ -39,6 +41,7 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
           phone: row?.phone || '',
           location: row?.location || '',
           bio: row?.bio || '',
+          avatar_url: row?.avatar_url || '',
           phone_verified: row?.phone_verified || false,
           phone_verification_requested_at: row?.phone_verification_requested_at || null,
         });
@@ -69,6 +72,7 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
 
     setSaving(true);
     setErrorText('');
+    setSuccessText('');
 
     try {
       const saved = await upsertCurrentProfile(user.id, {
@@ -77,9 +81,11 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
         phone: form.phone.trim(),
         location: form.location.trim(),
         bio: form.bio.trim(),
+        avatar_url: form.avatar_url.trim(),
       });
+      setSuccessText('Profil güncellendi.');
       await onSaved?.(saved);
-      onClose?.();
+      window.setTimeout(() => onClose?.(), 1200);
     } catch (error) {
       setErrorText(error?.message || 'Profil kaydedilemedi.');
     } finally {
@@ -134,10 +140,27 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
           <div className="space-y-4">
             <TrustScoreCard profile={previewProfile} user={user} />
 
+            {profile?.is_suspended && (
+              <div className="rounded-3xl bg-rose-50 p-4 text-sm font-bold text-rose-800 ring-1 ring-rose-100">
+                Hesabın askıya alındı. Profil bilgilerini güncelleyebilirsin, ancak ilan verme ve mesajlaşma kapalıdır.
+              </div>
+            )}
+
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500"><Mail size={15} /> Hesap e-postası</div>
               <div className="truncate text-sm font-bold text-slate-900">{user?.email || 'E-posta bulunamadı'}</div>
+              <p className="mt-1 text-xs font-semibold text-slate-500">E-posta giriş hesabına bağlıdır; buradan değiştirilmez.</p>
             </div>
+
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-sm font-black text-slate-700"><User size={16} /> Profil fotoğrafı URL</span>
+              <input
+                value={form.avatar_url}
+                onChange={(event) => update('avatar_url', event.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-slate-400"
+              />
+            </label>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
@@ -211,6 +234,12 @@ export default function ProfileModal({ user, profile, onClose, onSaved }) {
               <div className="flex items-center gap-2 font-black"><ShieldCheck size={17} /> Güven etkisi</div>
               <p className="mt-1 text-emerald-700">Dolgun profil + doğru telefon + konum, ilan dönüşümünü ciddi artırır. Boş satıcı profili marketplace’te güven kırar.</p>
             </div>
+
+            {successText && (
+              <div className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-800 ring-1 ring-emerald-100">
+                {successText}
+              </div>
+            )}
 
             {errorText && (
               <div className="flex items-center gap-2 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700 ring-1 ring-red-100">

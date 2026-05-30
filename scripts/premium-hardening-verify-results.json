@@ -1,0 +1,69 @@
+{
+  "passed": [
+    {
+      "name": "STRIPE_SECRET_KEY test mode",
+      "detail": ""
+    },
+    {
+      "name": "STRIPE_WEBHOOK_SECRET set",
+      "detail": ""
+    },
+    {
+      "name": "CRON_SECRET set",
+      "detail": ""
+    },
+    {
+      "name": "PREMIUM_SELLER_MONTHLY_AMOUNT",
+      "detail": "9900"
+    },
+    {
+      "name": "Missing stripe-signature header → 400",
+      "detail": ""
+    },
+    {
+      "name": "Invalid webhook signature → 400",
+      "detail": ""
+    },
+    {
+      "name": "Valid webhook signature parsed",
+      "detail": "status 400"
+    },
+    {
+      "name": "Active user featured checkout",
+      "detail": ""
+    },
+    {
+      "name": "Suspended user featured checkout blocked",
+      "detail": ""
+    },
+    {
+      "name": "Suspended user premium seller checkout blocked",
+      "detail": ""
+    },
+    {
+      "name": "Cross-user checkout still blocked",
+      "detail": ""
+    },
+    {
+      "name": "Expiry cron clears featured",
+      "detail": ""
+    },
+    {
+      "name": "Admin revenue anonymous blocked",
+      "detail": ""
+    },
+    {
+      "name": "Admin revenue DB snapshot",
+      "detail": "3 paid / 3000 XPF"
+    },
+    {
+      "name": "Stripe E2E checkout session created",
+      "detail": "cs_test_a1VKE0KCRZs7Fy7NECK0ipevzVMqfpbu7FthtMo7KfWcF6FNlLgAFlHkJo"
+    }
+  ],
+  "failed": [],
+  "warnings": [
+    "Complete manually in browser: https://checkout.stripe.com/c/pay/cs_test_a1VKE0KCRZs7Fy7NECK0ipevzVMqfpbu7FthtMo7KfWcF6FNlLgAFlHkJo#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRRX0lCM0JWQ0JCNGRONUZvUkQ0ZzdkRGpOUG9ScW5CPTVjS25Ub0tWXUZrZjVtMTZsRERSakQ3cEhcUHA9ZnZ3Z3B9Qmo3S39jV0pLYlVPNUQ0PVxqMz01NWBSXVE3NTFJJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+  ],
+  "stripeCheckoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1VKE0KCRZs7Fy7NECK0ipevzVMqfpbu7FthtMo7KfWcF6FNlLgAFlHkJo#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWnFgdnFaMDRRX0lCM0JWQ0JCNGRONUZvUkQ0ZzdkRGpOUG9ScW5CPTVjS25Ub0tWXUZrZjVtMTZsRERSakQ3cEhcUHA9ZnZ3Z3B9Qmo3S39jV0pLYlVPNUQ0PVxqMz01NWBSXVE3NTFJJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl"
+}

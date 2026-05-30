@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "autoprefixer": "latest",
+    "pg": "^8.21.0",
     "postcss": "latest",
     "tailwindcss": "3"
   },

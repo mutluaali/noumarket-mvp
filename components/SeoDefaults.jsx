@@ -1,10 +1,13 @@
+import { DEFAULT_OG_IMAGE_PATH, DEFAULT_SITE_DESCRIPTION, DEFAULT_SITE_TITLE } from '@/lib/seoMetadata';
+
 export const defaultSeo = {
-  title: 'NouMarket — New Caledonia Marketplace',
-  description: 'Buy, sell, rent and find local services in New Caledonia.',
+  title: DEFAULT_SITE_TITLE,
+  description: DEFAULT_SITE_DESCRIPTION,
   openGraph: {
-    title: 'NouMarket',
-    description: 'New Caledonia local classifieds platform',
+    title: DEFAULT_SITE_TITLE,
+    description: DEFAULT_SITE_DESCRIPTION,
     type: 'website',
-    locale: 'fr_NC',
+    locale: 'tr_TR',
+    images: [{ url: DEFAULT_OG_IMAGE_PATH, alt: 'NouMarket' }],
   },
 };

@@ -1,7 +1,7 @@
 {
   "name": "NouMarket",
   "short_name": "NouMarket",
-  "description": "New Caledonia local classifieds marketplace.",
+  "description": "Yeni Kaledonya ilan pazarı — al, sat, kirala.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -25,7 +25,7 @@
     "business",
     "lifestyle"
   ],
-  "lang": "fr-NC",
+  "lang": "tr",
   "dir": "ltr",
   "shortcuts": [
     {

@@ -1,20 +1,20 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { tryCreateServiceRoleClient } from '@/lib/envGuards';
 import SeoLandingPage from '@/components/seo/SeoLandingPage';
 import { getCategoryBySlug } from '@/lib/seoTaxonomy';
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://noumarket-mvp.vercel.app';
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'build-placeholder-key',
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+import { buildCategoryShareMetadata, SITE_URL } from '@/lib/seoMetadata';
+import { PUBLIC_LISTING_STATUSES } from '@/lib/listingStatus';
 
 async function getListings(categoryName) {
+  const { supabase } = tryCreateServiceRoleClient();
+  if (!supabase) {
+    return { listings: [], totalCount: 0 };
+  }
+
   const { data, count, error } = await supabase
     .from('listings')
     .select('*, listing_images(image_url, sort_order)', { count: 'exact' })
-    .eq('status', 'approved')
+    .in('status', PUBLIC_LISTING_STATUSES)
     .eq('category', categoryName)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false })
@@ -31,22 +31,7 @@ async function getListings(categoryName) {
 export async function generateMetadata({ params }) {
   const { slug } = await params;
   const category = getCategoryBySlug(slug);
-  if (!category) return {};
-
-  return {
-    title: `${category.title} | NouMarket`,
-    description: category.description,
-    alternates: { canonical: `${siteUrl}/kategori/${category.slug}` },
-    keywords: category.keywords,
-    openGraph: {
-      title: `${category.title} | NouMarket`,
-      description: category.description,
-      url: `${siteUrl}/kategori/${category.slug}`,
-      siteName: 'NouMarket',
-      locale: 'tr_TR',
-      type: 'website',
-    },
-  };
+  return buildCategoryShareMetadata(category);
 }
 
 export default async function CategoryLandingPage({ params }) {
@@ -59,9 +44,9 @@ export default async function CategoryLandingPage({ params }) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: category.title,
-    description: category.description,
-    url: `${siteUrl}/kategori/${category.slug}`,
+    name: `${category.name} ilanları`,
+    description: `Yeni Kaledonya'da ${category.name.toLowerCase()} ilanlarını keşfedin.`,
+    url: `${SITE_URL}/kategori/${category.slug}`,
   };
 
   return (

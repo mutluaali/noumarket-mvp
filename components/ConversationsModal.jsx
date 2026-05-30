@@ -11,7 +11,11 @@ export default function ConversationsModal({ user, onClose }) {
   const [loading, setLoading] = useState(true);
 
   async function loadConversations() {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await getMyConversations(user.id);

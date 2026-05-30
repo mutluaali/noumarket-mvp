@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
+import { assertUserNotSuspended } from '@/lib/suspension';
 
-
-function makeAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL eksik.');
-  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY eksik.');
-  return createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-}
 
 function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
@@ -43,11 +36,21 @@ async function assertOwner(supabaseAdmin, id, userId) {
   return data;
 }
 
+function isMissingColumn(error) {
+  return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || error?.details || '');
+}
+
 export async function PATCH(request, context) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     const user = await requireUser(request, supabaseAdmin);
-    const id = context.params.id;
+    await assertUserNotSuspended(supabaseAdmin, user.id);
+    const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
     await assertOwner(supabaseAdmin, id, user.id);
 
@@ -56,7 +59,13 @@ export async function PATCH(request, context) {
     if (body.action === 'pause') {
       patch = { status: 'passive', updated_at: new Date().toISOString() };
     } else if (body.action === 'republish') {
-      patch = { status: 'pending', updated_at: new Date().toISOString() };
+      patch = {
+        status: 'pending',
+        approval_status: 'pending',
+        approved_at: null,
+        rejected_reason: null,
+        updated_at: new Date().toISOString(),
+      };
     } else if (body.action === 'mark_sold') {
       patch = { status: 'sold', updated_at: new Date().toISOString() };
     } else if (body.action === 'update') {
@@ -74,18 +83,36 @@ export async function PATCH(request, context) {
         seller_email: body.seller_email || '',
         image_url: body.image_url || '',
         metadata: body.metadata || {},
+        attributes: body.attributes || body.metadata || {},
         status: 'pending',
+        approval_status: 'pending',
+        approved_at: null,
+        rejected_reason: null,
         updated_at: new Date().toISOString(),
       };
     } else {
       return NextResponse.json({ error: 'Geçersiz işlem.' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    let { error } = await supabaseAdmin
       .from('listings')
       .update(patch)
       .eq('id', id)
       .eq('user_id', user.id);
+
+    if (error && isMissingColumn(error)) {
+      const fallbackPatch = { ...patch };
+      delete fallbackPatch.approval_status;
+      delete fallbackPatch.approved_at;
+      delete fallbackPatch.rejected_reason;
+      delete fallbackPatch.attributes;
+
+      ({ error } = await supabaseAdmin
+        .from('listings')
+        .update(fallbackPatch)
+        .eq('id', id)
+        .eq('user_id', user.id));
+    }
 
     if (error) throw error;
     return NextResponse.json({ ok: true });
@@ -97,9 +124,15 @@ export async function PATCH(request, context) {
 
 export async function DELETE(request, context) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     const user = await requireUser(request, supabaseAdmin);
-    const id = context.params.id;
+    await assertUserNotSuspended(supabaseAdmin, user.id);
+    const { id } = await context.params;
     await assertOwner(supabaseAdmin, id, user.id);
 
     const { error } = await supabaseAdmin

@@ -1,19 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
 
-
-function makeAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || 'build-placeholder-service-role-key',
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
 
 function getAccessToken(request) {
   const authHeader = request.headers.get('authorization') || '';
@@ -61,7 +48,12 @@ async function getUserFromRequest(request, supabaseAdmin) {
 
 export async function POST(request) {
   try {
-    const supabaseAdmin = makeAdminClient();
+    const configError = getServiceRoleConfigError();
+    if (configError) {
+      return NextResponse.json({ error: configError.message }, { status: configError.status });
+    }
+
+    const supabaseAdmin = createServiceRoleClient();
     const { user, error: userError } = await getUserFromRequest(request, supabaseAdmin);
 
     if (userError) {
