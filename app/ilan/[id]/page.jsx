@@ -14,11 +14,13 @@ import { formatPublishedDate } from '@/lib/formatListingDate';
 import { buildListingShareMetadata } from '@/lib/seoMetadata';
 import { pickListingImageUrls } from '@/lib/listingImages';
 import ListingImageFallback from '@/components/ListingImageFallback';
+import { sanitizePublicListing } from '@/lib/listings';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const listingSelect = '*, listing_images(image_url, sort_order)';
+const listingSelect =
+  'id,user_id,title,description,category,subcategory,category_id,subcategory_id,condition,price,currency,location,seller_name,seller_phone,image_url,status,is_featured,featured_until,view_count,created_at,metadata,attributes,listing_images(image_url, sort_order)';
 
 function getImages(row) {
   return pickListingImageUrls(row);
@@ -134,12 +136,13 @@ async function fetchApprovedListing(id, { trackView = false } = {}) {
 
   if (error || !data) return null;
 
-  if (!trackView) return data;
+  const publicListing = sanitizePublicListing(data);
+  if (!trackView) return publicListing;
 
   const nextViewCount = Number(data.view_count || 0) + 1;
   await supabase.from('listings').update({ view_count: nextViewCount }).eq('id', id);
 
-  return { ...data, view_count: nextViewCount };
+  return { ...publicListing, view_count: nextViewCount };
 }
 
 async function getListingForMetadata(id) {
@@ -282,7 +285,16 @@ export default async function ListingPage({ params }) {
               />
 
               <div className="mt-4">
-                <SellerTrustBadge listing={{ ...listing, phone: contactPhone, images }} />
+                <SellerTrustBadge
+                  listing={{
+                    phone: contactPhone,
+                    seller_phone: contactPhone,
+                    description: listing.description,
+                    location: listing.location,
+                    images,
+                    image_url: images[0] || listing.image_url || '',
+                  }}
+                />
               </div>
 
               <div className="mt-3 grid gap-3">

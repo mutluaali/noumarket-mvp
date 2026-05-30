@@ -29,12 +29,16 @@ if (/prod|production/i.test(env.STAGING_DATABASE_URL || '') && !env.ALLOW_PRODUC
 
 const TEST_TITLE_SQL = `
   lower(title) like 'rls-verify-%'
+  or lower(title) like 'rls-%'
   or lower(title) like 'smoke-%'
+  or lower(title) like 'smoke %'
+  or lower(title) like 'smoke edited%'
   or lower(title) like 'smoke-rej-%'
   or lower(title) like 'reject-reason-verify-%'
   or lower(title) like 'reject-empty-%'
   or lower(title) like 'msg-%'
   or lower(title) like 'msg2-%'
+  or lower(title) like 'test%'
   or lower(title) ~ '^x[0-9]+$'
   or (lower(title) = 'x' and lower(coalesce(category, '')) in ('t', 'test'))
   or lower(title) = 'dd'

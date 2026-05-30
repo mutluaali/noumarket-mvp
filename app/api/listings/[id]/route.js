@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServiceRoleClient, getServiceRoleConfigError } from '@/lib/envGuards';
+import { sanitizePublicListing } from '@/lib/listings';
 
-
-const listingSelect = '*, listing_images(image_url, sort_order)';
+const listingSelect =
+  'id,user_id,title,description,category,subcategory,category_id,subcategory_id,condition,price,currency,location,seller_name,seller_phone,image_url,status,is_featured,featured_until,view_count,created_at,metadata,attributes,listing_images(image_url, sort_order)';
 
 export async function GET(_request, context) {
   try {
@@ -44,7 +45,7 @@ export async function GET(_request, context) {
       });
 
     return NextResponse.json(
-      { data: { ...data, view_count: nextViewCount } },
+      { data: sanitizePublicListing({ ...data, view_count: nextViewCount }) },
       {
         status: 200,
         headers: {
