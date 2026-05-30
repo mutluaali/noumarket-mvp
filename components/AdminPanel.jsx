@@ -6,6 +6,7 @@ import { fetchAdminReports, REPORT_REASON_LABELS, REPORT_STATUS_LABELS, updateRe
 import { fetchAdminUsers, suspendAdminUser, unsuspendAdminUser } from '@/lib/adminUsers';
 import { fetchAdminRevenue, fetchPendingAdminPayments, reviewAdminPayment } from '@/lib/monetization';
 import { supabase } from '@/lib/supabase';
+import ProductInsightsPanel from '@/components/ProductInsightsPanel';
 
 const listingStatusLabels = {
   all: 'Tümü',
@@ -80,7 +81,10 @@ async function fetchAdminDashboardMetrics() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Panel verileri yüklenemedi.');
-  return payload.metrics || null;
+  return {
+    metrics: payload.metrics || null,
+    productInsights: payload.productInsights || null,
+  };
 }
 
 function AdminStat({ icon: Icon, label, value, hint, onClick }) {
@@ -137,6 +141,7 @@ export default function AdminPanel({ listings = [], onApprove, onReject, onDelet
   const [rejectNote, setRejectNote] = useState('');
   const [toast, setToast] = useState(null);
   const [dashboardMetrics, setDashboardMetrics] = useState(null);
+  const [productInsights, setProductInsights] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [reports, setReports] = useState([]);
   const [reportFilter, setReportFilter] = useState('open');
@@ -284,10 +289,12 @@ export default function AdminPanel({ listings = [], onApprove, onReject, onDelet
   const loadDashboard = useCallback(async () => {
     setDashboardLoading(true);
     try {
-      const metrics = await fetchAdminDashboardMetrics();
-      setDashboardMetrics(metrics);
+      const payload = await fetchAdminDashboardMetrics();
+      setDashboardMetrics(payload.metrics);
+      setProductInsights(payload.productInsights);
     } catch {
       setDashboardMetrics(null);
+      setProductInsights(null);
     } finally {
       setDashboardLoading(false);
     }
@@ -480,6 +487,7 @@ export default function AdminPanel({ listings = [], onApprove, onReject, onDelet
                   İlan moderasyonuna git <ChevronRight size={14} />
                 </button>
               </div>
+              <ProductInsightsPanel insights={productInsights} loading={dashboardLoading} />
             </section>
           ) : null}
 

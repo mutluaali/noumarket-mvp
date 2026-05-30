@@ -2,162 +2,253 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
-  --background:#f8fafc;
-  --foreground:#0f172a;
-  --brand:#0f172a;
-  --surface:#ffffff;
-  --surface-soft:#f8fafc;
-  --surface-elevated:#ffffff;
-  --surface-glass:rgba(255,255,255,.92);
-  --field-bg:#ffffff;
-  --field-hover:#f8fafc;
-  --field-border:#e2e8f0;
-  --field-focus:#67e8f9;
-  --muted:#64748b;
-  --placeholder:#94a3b8;
-  --card-shadow:0 18px 45px rgba(15,23,42,.08);
-  --card-shadow-hover:0 26px 70px rgba(15,23,42,.16);
+:root {
+  --background: #f4f7fa;
+  --foreground: #0f172a;
+  --brand: #00a0a0;
+  --brand-hover: #008585;
+  --brand-soft: #e6f7f7;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-elevated: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.94);
+  --field-bg: #ffffff;
+  --field-hover: #f8fafc;
+  --field-border: #e2e8f0;
+  --field-focus: #00a0a0;
+  --muted: #64748b;
+  --placeholder: #94a3b8;
+  --card-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+  --card-shadow-hover: 0 16px 44px rgba(15, 23, 42, 0.14);
+  --hero-overlay: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.55) 55%, rgba(15, 23, 42, 0.72) 100%);
 }
 
-html.dark{
-  --background:#020617;
-  --foreground:#f8fafc;
-  --brand:#06b6d4;
-  --surface:#0f172a;
-  --surface-soft:#111827;
-  --surface-elevated:#111827;
-  --surface-glass:rgba(15,23,42,.86);
-  --field-bg:rgba(15,23,42,.88);
-  --field-hover:rgba(30,41,59,.92);
-  --field-border:rgba(255,255,255,.12);
-  --field-focus:rgba(34,211,238,.72);
-  --muted:#94a3b8;
-  --placeholder:#64748b;
-  --card-shadow:0 18px 45px rgba(0,0,0,.28);
-  --card-shadow-hover:0 28px 76px rgba(0,0,0,.42);
+html.dark {
+  --background: #0b1220;
+  --foreground: #f8fafc;
+  --brand: #22d3ee;
+  --brand-hover: #0891b2;
+  --brand-soft: rgba(34, 211, 238, 0.12);
+  --surface: #111827;
+  --surface-soft: #0f172a;
+  --surface-elevated: #1e293b;
+  --surface-glass: rgba(17, 24, 39, 0.92);
+  --field-bg: rgba(15, 23, 42, 0.88);
+  --field-hover: rgba(30, 41, 59, 0.92);
+  --field-border: rgba(255, 255, 255, 0.1);
+  --field-focus: rgba(34, 211, 238, 0.72);
+  --muted: #94a3b8;
+  --placeholder: #64748b;
+  --card-shadow: 0 12px 36px rgba(0, 0, 0, 0.32);
+  --card-shadow-hover: 0 20px 52px rgba(0, 0, 0, 0.42);
+  --hero-overlay: linear-gradient(180deg, rgba(2, 6, 23, 0.55) 0%, rgba(2, 6, 23, 0.78) 55%, rgba(2, 6, 23, 0.92) 100%);
 }
 
-*{box-sizing:border-box}
-html{scroll-behavior:smooth;background:var(--background)}
-html.dark{scrollbar-color:rgb(71 85 105) rgb(15 23 42)}
-body{
-  margin:0;
-  padding:0;
-  overflow-x:hidden;
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--background);
+}
+
+html.dark {
+  scrollbar-color: rgb(71 85 105) rgb(15 23 42);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
   background:
-    radial-gradient(circle at 15% 0%, rgba(59,130,246,.11), transparent 28rem),
-    radial-gradient(circle at 85% 8%, rgba(245,158,11,.12), transparent 24rem),
+    radial-gradient(circle at 12% 0%, rgba(8, 145, 178, 0.08), transparent 26rem),
+    radial-gradient(circle at 88% 4%, rgba(14, 116, 144, 0.06), transparent 22rem),
     var(--background);
-  color:var(--foreground);
-  text-rendering:optimizeLegibility;
-  -webkit-font-smoothing:antialiased;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-button,input,select,textarea{font:inherit}
-input,select,textarea{color-scheme:light}
-html.dark input,html.dark select,html.dark textarea{color-scheme:dark}
-select option{background:var(--surface-elevated);color:var(--foreground)}
-button{touch-action:manipulation}
-img{max-width:100%;display:block}
-body,button,input,select,textarea{letter-spacing:0}
-::selection{background:#0f172a;color:white}
-
-html.dark *{
-  scrollbar-color:rgb(71 85 105) rgb(15 23 42);
+html.dark body {
+  background:
+    radial-gradient(circle at 15% 0%, rgba(34, 211, 238, 0.07), transparent 28rem),
+    radial-gradient(circle at 85% 8%, rgba(8, 145, 178, 0.05), transparent 24rem),
+    var(--background);
 }
 
-html.dark *::-webkit-scrollbar{
-  width:12px;
-  height:12px;
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
-html.dark *::-webkit-scrollbar-track{
-  background:rgb(15 23 42);
+input,
+select,
+textarea {
+  color-scheme: light;
 }
 
-html.dark *::-webkit-scrollbar-thumb{
-  background:rgb(71 85 105);
-  border:3px solid rgb(15 23 42);
-  border-radius:999px;
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color-scheme: dark;
 }
 
-html.dark *::-webkit-scrollbar-thumb:hover{
-  background:rgb(100 116 139);
+select option {
+  background: var(--surface-elevated);
+  color: var(--foreground);
 }
 
-html.dark *::-webkit-scrollbar-button{
-  background:rgb(15 23 42);
+button {
+  touch-action: manipulation;
 }
 
-html.dark [class~="bg-white"]:not([class*="dark:bg-"]),
-html.dark [class~="bg-white/90"]:not([class*="dark:bg-"]),
-html.dark [class~="bg-white/95"]:not([class*="dark:bg-"]),
-html.dark [class~="bg-slate-50"]:not([class*="dark:bg-"]){
-  background-color:rgb(15 23 42 / .92);
+img {
+  max-width: 100%;
+  display: block;
 }
 
-html.dark [class~="border-slate-200"]:not([class*="dark:border-"]),
-html.dark [class~="ring-slate-200"]:not([class*="dark:ring-"]),
-html.dark [class~="ring-slate-100"]:not([class*="dark:ring-"]){
-  border-color:rgb(255 255 255 / .1);
-  --tw-ring-color:rgb(255 255 255 / .1);
+::selection {
+  background: #0891b2;
+  color: white;
 }
 
-html.dark [class~="text-slate-950"]:not([class*="dark:text-"]),
-html.dark [class~="text-slate-900"]:not([class*="dark:text-"]),
-html.dark [class~="text-slate-800"]:not([class*="dark:text-"]){
-  color:rgb(248 250 252);
+html.dark * {
+  scrollbar-color: rgb(71 85 105) rgb(15 23 42);
 }
 
-html.dark [class~="text-slate-700"]:not([class*="dark:text-"]),
-html.dark [class~="text-slate-600"]:not([class*="dark:text-"]){
-  color:rgb(203 213 225);
+html.dark *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
 }
 
-html.dark [class~="text-slate-500"]:not([class*="dark:text-"]),
-html.dark [class~="text-slate-400"]:not([class*="dark:text-"]){
-  color:rgb(148 163 184);
+html.dark *::-webkit-scrollbar-track {
+  background: rgb(15 23 42);
 }
 
-.no-scrollbar::-webkit-scrollbar{display:none}
-.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+html.dark *::-webkit-scrollbar-thumb {
+  background: rgb(71 85 105);
+  border: 3px solid rgb(15 23 42);
+  border-radius: 999px;
+}
 
-@layer components{
-  .nm-card{
-    background:var(--surface);
-    border-color:var(--field-border);
-    box-shadow:var(--card-shadow);
+html.dark *::-webkit-scrollbar-thumb:hover {
+  background: rgb(100 116 139);
+}
+
+html.dark *::-webkit-scrollbar-button {
+  background: rgb(15 23 42);
+}
+
+html.dark [class~='bg-white']:not([class*='dark:bg-']),
+html.dark [class~='bg-white/90']:not([class*='dark:bg-']),
+html.dark [class~='bg-white/95']:not([class*='dark:bg-']),
+html.dark [class~='bg-slate-50']:not([class*='dark:bg-']) {
+  background-color: rgb(17 24 39 / 0.92);
+}
+
+html.dark [class~='border-slate-200']:not([class*='dark:border-']),
+html.dark [class~='ring-slate-200']:not([class*='dark:ring-']),
+html.dark [class~='ring-slate-100']:not([class*='dark:ring-']) {
+  border-color: rgb(255 255 255 / 0.1);
+  --tw-ring-color: rgb(255 255 255 / 0.1);
+}
+
+html.dark [class~='text-slate-950']:not([class*='dark:text-']),
+html.dark [class~='text-slate-900']:not([class*='dark:text-']),
+html.dark [class~='text-slate-800']:not([class*='dark:text-']) {
+  color: rgb(248 250 252);
+}
+
+html.dark [class~='text-slate-700']:not([class*='dark:text-']),
+html.dark [class~='text-slate-600']:not([class*='dark:text-']) {
+  color: rgb(203 213 225);
+}
+
+html.dark [class~='text-slate-500']:not([class*='dark:text-']),
+html.dark [class~='text-slate-400']:not([class*='dark:text-']) {
+  color: rgb(148 163 184);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer components {
+  .nm-card {
+    background: var(--surface);
+    border-color: var(--field-border);
+    box-shadow: var(--card-shadow);
   }
-  .nm-card:hover{
-    box-shadow:var(--card-shadow-hover);
+
+  .nm-card:hover {
+    box-shadow: var(--card-shadow-hover);
   }
-  .nm-panel{
-    background:var(--surface-glass);
-    border-color:var(--field-border);
+
+  .nm-panel {
+    background: var(--surface-glass);
+    border-color: var(--field-border);
   }
-  .nm-field{
-    background:var(--field-bg);
-    color:var(--foreground);
-    border-color:var(--field-border);
+
+  .nm-field {
+    background: var(--field-bg);
+    color: var(--foreground);
+    border-color: var(--field-border);
   }
-  .nm-field:hover{
-    background:var(--field-hover);
+
+  .nm-field:hover {
+    background: var(--field-hover);
   }
+
   .nm-field:focus,
-  .nm-field:focus-within{
-    border-color:var(--field-focus);
-    --tw-ring-color:color-mix(in srgb, var(--field-focus) 26%, transparent);
+  .nm-field:focus-within {
+    border-color: var(--field-focus);
+    --tw-ring-color: color-mix(in srgb, var(--field-focus) 26%, transparent);
   }
+
   .nm-field::placeholder,
-  .nm-field input::placeholder{
-    color:var(--placeholder);
+  .nm-field input::placeholder {
+    color: var(--placeholder);
   }
-  .nm-muted{
-    color:var(--muted);
+
+  .nm-muted {
+    color: var(--muted);
+  }
+
+  .nm-btn-primary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-brand-teal px-5 py-3 text-sm font-black text-white shadow-md shadow-brand-teal/20 transition hover:bg-brand-teal-dark;
+  }
+
+  .nm-badge-premium {
+    @apply inline-flex items-center gap-1 rounded-full bg-brand-teal px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white shadow-sm;
+  }
+
+  .nm-hero-search {
+    @apply overflow-hidden rounded-[999px] bg-white shadow-[0_16px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/80 dark:bg-slate-900/90 dark:ring-white/10;
+  }
+
+  .nm-hero-search-divider {
+    @apply hidden h-10 w-px shrink-0 self-center bg-slate-200 dark:bg-white/10 lg:block;
+  }
+
+  .nm-hero-title {
+    font-family: var(--font-display), Georgia, serif;
+    letter-spacing: -0.02em;
   }
 }
 
-@media (max-width: 640px){
-  input,select,textarea{font-size:16px}
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

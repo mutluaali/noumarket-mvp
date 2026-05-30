@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Search, ShieldCheck, Crown, Home, Grid2X2, MessageCircle, UserRound, Plus, MapPin, ArrowRight, Menu, X, CarFront, Building2, Smartphone, Sofa, Flag } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Search, ShieldCheck, Crown, Home, Grid2X2, MessageCircle, UserRound, Plus, MapPin, ArrowRight, Menu, X, CarFront, Building2, Smartphone, Sofa, ChevronDown, Headphones, Globe2, Zap } from 'lucide-react';
 import Header from '@/components/Header';
 import AuthModal from '@/components/AuthModal';
 import ListingCard from '@/components/ListingCard';
@@ -43,13 +43,13 @@ function useHydrated() {
 
 function BottomNav({ onCreate, onMessages, onMyListings, onProfile, onCategories, onHome, user }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-2 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-slate-950/95 md:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-5 gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-        <button type="button" onClick={onHome} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><Home size={18} /> Ana Sayfa</button>
-        <button type="button" onClick={onCategories} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><Grid2X2 size={18} /> Kategoriler</button>
-        <button type="button" onClick={onCreate} className="-mt-5 flex flex-col items-center gap-1 rounded-2xl bg-cyan-600 px-2 py-3 text-white shadow-lg shadow-cyan-600/25"><Plus size={22} /> İlan Ver</button>
-        <button type="button" onClick={onMessages} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><MessageCircle size={18} /> Mesajlar</button>
-        <button type="button" onClick={user ? onMyListings : onProfile} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><UserRound size={18} /> {user ? 'İlanlarım' : 'Hesap'}</button>
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/80 bg-white/95 px-2 pb-2 pt-1 shadow-nav backdrop-blur-xl dark:border-white/10 dark:bg-brand-charcoal/95 md:hidden">
+      <div className="mx-auto grid max-w-md grid-cols-5 items-end gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+        <button type="button" onClick={onHome} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-brand-teal dark:text-brand-teal-light"><Home size={20} /> Ana Sayfa</button>
+        <button type="button" onClick={onCategories} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><Grid2X2 size={20} /> Kategoriler</button>
+        <button type="button" onClick={onCreate} className="-mt-7 mx-auto flex h-[58px] w-[58px] flex-col items-center justify-center rounded-full bg-brand-teal text-white shadow-premium ring-4 ring-[var(--background)]"><Plus size={26} strokeWidth={2.5} /></button>
+        <button type="button" onClick={onMessages} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><MessageCircle size={20} /> Mesajlar</button>
+        <button type="button" onClick={user ? onMyListings : onProfile} className="flex flex-col items-center gap-1 rounded-2xl px-2 py-2"><UserRound size={20} /> {user ? 'İlanlarım' : 'Hesap'}</button>
       </div>
     </nav>
   );
@@ -59,7 +59,7 @@ function SectionHeader({ eyebrow, title, action, onAction }) {
   return (
     <div className="mb-4 flex items-end justify-between gap-3">
       <div className="min-w-0">
-        {eyebrow ? <div className="mb-1 text-[11px] font-black uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-300">{eyebrow}</div> : null}
+        {eyebrow ? <div className="mb-1 text-[11px] font-black uppercase tracking-[0.22em] text-brand-teal dark:text-brand-teal-light">{eyebrow}</div> : null}
         <h2 className="truncate text-xl font-black text-slate-950 dark:text-white sm:text-2xl">{title}</h2>
       </div>
       {action ? <button onClick={onAction} className="nm-field inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-2 text-xs font-black shadow-sm transition">{action}<ArrowRight size={14}/></button> : null}
@@ -90,12 +90,96 @@ function ListingRail({ title, eyebrow, items, onOpen, onAction, emptyText = 'Hen
   );
 }
 
-function TrustMetric({ icon: Icon, title, text }) {
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1589394815804-964ed0c4de88?auto=format&fit=crop&w=2000&q=80';
+
+function HeroFeatureBar() {
+  const items = [
+    { icon: ShieldCheck, label: 'Güvenli Ödeme Sistemi' },
+    { icon: UserRound, label: 'Doğrulanmış Satıcılar' },
+    { icon: Headphones, label: '7/24 Destek' },
+    { icon: Globe2, label: 'Yerel ve Global Topluluk' },
+    { icon: Zap, label: 'Kolay ve Hızlı İlan Verme' },
+  ];
+
   return (
-    <div className="nm-panel rounded-[26px] border p-4 shadow-sm backdrop-blur">
-      <div className="grid h-11 w-11 place-items-center rounded-2xl bg-cyan-50 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200"><Icon size={19}/></div>
-      <div className="mt-3 text-sm font-black text-[var(--foreground)]">{title}</div>
-      <p className="mt-1 text-xs font-semibold leading-5 text-[var(--muted)]">{text}</p>
+    <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      {items.map(({ icon: Icon, label }) => (
+        <div key={label} className="flex items-center gap-2.5 rounded-2xl bg-white/12 px-3 py-3 text-white ring-1 ring-white/15 backdrop-blur-md dark:bg-black/20">
+          <Icon size={18} className="shrink-0 text-brand-teal-light" />
+          <span className="text-[11px] font-bold leading-4">{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HeroSearchBar({
+  query,
+  setQuery,
+  selectedCategoryLabel,
+  openCategorySurface,
+  location,
+  setLocation,
+  loadingListings,
+  onSearch,
+  locationOptions,
+}) {
+  return (
+    <div className="nm-hero-search mt-6 max-w-5xl">
+      <div className="flex flex-col lg:flex-row lg:items-stretch">
+        <div className="flex min-h-[56px] flex-1 items-center gap-3 px-4 py-3 lg:px-5">
+          <Search className="shrink-0 text-brand-teal dark:text-brand-teal-light" size={20} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onSearch();
+              }
+            }}
+            placeholder="Ne arıyorsunuz?"
+            aria-label="İlan ara"
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+          />
+        </div>
+
+        <div className="nm-hero-search-divider" />
+
+        <button
+          type="button"
+          onClick={openCategorySurface}
+          className="flex min-h-[52px] items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-left text-sm font-bold text-slate-700 lg:min-h-[56px] lg:min-w-[190px] lg:border-t-0 lg:px-5 dark:border-white/10 dark:text-slate-200"
+        >
+          <span className="truncate">{selectedCategoryLabel || 'Tüm Kategoriler'}</span>
+          <ChevronDown size={16} className="shrink-0 opacity-60" />
+        </button>
+
+        <div className="nm-hero-search-divider" />
+
+        <div className="flex min-h-[52px] items-center gap-2 border-t border-slate-100 px-4 py-3 lg:min-h-[56px] lg:min-w-[190px] lg:border-t-0 lg:px-5 dark:border-white/10">
+          <MapPin size={17} className="shrink-0 text-brand-teal dark:text-brand-teal-light" />
+          <select
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            aria-label="Konum seç"
+            className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none dark:text-white"
+          >
+            {locationOptions.map((x) => (
+              <option key={x} value={x}>{x === 'Tumu' ? 'Nouméa, NC' : x}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          onClick={onSearch}
+          disabled={loadingListings}
+          className="min-h-[52px] bg-brand-teal px-8 text-sm font-black text-white transition hover:bg-brand-teal-dark disabled:opacity-60 lg:min-h-[56px] lg:rounded-none"
+        >
+          {loadingListings && query.trim() ? 'Aranıyor...' : 'Ara'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -748,7 +832,7 @@ export default function HomePage(){
    }
  }
 
- return <div className="min-h-screen [overflow-x:clip] bg-slate-100 pb-24 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white md:pb-0">
+ return <div className="min-h-screen [overflow-x:clip] bg-[var(--background)] pb-28 text-slate-900 transition-colors dark:text-white md:pb-0">
   {!hasSupabase && (
     <div className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
       {supabaseConfigMessage}
@@ -784,55 +868,61 @@ export default function HomePage(){
   />
 
   <main className="relative mx-auto grid w-full max-w-[1560px] items-start gap-5 px-3 py-3 sm:px-4 md:px-6 md:py-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-    <MarketplaceSidebar selectedCategoryId={selectedCategoryId} onSelectCategory={handleSidebarCategory} categoryCounts={categoryCounts} onPremiumClick={() => setShowPricing(true)} />
+    <MarketplaceSidebar selectedCategoryId={selectedCategoryId} onSelectCategory={handleSidebarCategory} categoryCounts={categoryCounts} onPremiumClick={() => setShowPricing(true)} onHomeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} />
     <div className="min-w-0 flex-1">
-      <section className="relative overflow-hidden rounded-[34px] border border-slate-800/40 shadow-[0_28px_90px_rgba(15,23,42,0.18)] dark:border-white/10">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950" aria-hidden="true" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(34,211,238,0.2),transparent_58%)]" aria-hidden="true" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(15,23,42,0.65),transparent_62%)]" aria-hidden="true" />
-        <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.45)_1px,transparent_1px)] [background-size:28px_28px]" aria-hidden="true" />
-        <div className="relative p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-col gap-5 lg:gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/14 px-3 py-2 text-xs font-black text-white ring-1 ring-white/25 backdrop-blur-md"><ShieldCheck size={15}/> Yeni Kaledonya&apos;nın ilan pazarı</div>
-              <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">Aradığınız ilanı hızlıca bulun</h1>
-              <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-white/86 sm:text-base sm:leading-7">Araba, ev, elektronik, hizmet ve daha fazlası — NouMarket&apos;te al, sat ve keşfet.</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={openCreateListing} className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl bg-cyan-500 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg shadow-cyan-500/25 transition hover:bg-cyan-400"><Plus size={18}/> İlan Ver</button>
-                <button type="button" onClick={scrollToListings} className="inline-flex min-h-[46px] items-center gap-2 rounded-2xl bg-white/14 px-5 py-2.5 text-sm font-black text-white ring-1 ring-white/25 backdrop-blur-md transition hover:bg-white/20">İlanları Keşfet <ArrowRight size={16}/></button>
-              </div>
-            </div>
-            <div className="nm-panel max-w-5xl rounded-[28px] p-2 shadow-2xl shadow-slate-950/25 ring-1 ring-white/70 backdrop-blur-xl dark:ring-white/10">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_180px_104px]">
-                <div className="nm-field flex min-h-[52px] items-center gap-3 rounded-2xl px-4 ring-1 ring-[var(--field-border)] sm:col-span-2 lg:col-span-1 lg:min-h-[58px]"><Search className="text-cyan-600 dark:text-cyan-300" size={21}/><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={(event)=>{ if(event.key==='Enter'){ event.preventDefault(); setListingsPage(1); refreshListings({ page: 1 }); scrollToListings(); } }} placeholder="İlan, kategori veya anahtar kelime ara" aria-label="İlan ara" className="nm-field min-w-0 flex-1 border-0 bg-transparent text-sm font-black outline-none placeholder:text-[var(--placeholder)] focus:ring-0" /></div>
-                <button type="button" onClick={openCategorySurface} className="nm-field flex min-h-[52px] items-center justify-between rounded-2xl px-4 text-left text-sm font-black ring-1 ring-[var(--field-border)] lg:min-h-[58px]"><span className="truncate">{selectedCategoryLabel || 'Tüm kategoriler'}</span><Menu size={18}/></button>
-                <div className="nm-field flex min-h-[52px] items-center gap-2 rounded-2xl px-4 ring-1 ring-[var(--field-border)] lg:min-h-[58px]"><MapPin size={18} className="text-cyan-600 dark:text-cyan-300" /><select value={location} onChange={e=>setLocation(e.target.value)} aria-label="Konum seç" className="min-w-0 flex-1 bg-transparent text-sm font-black text-[var(--foreground)] outline-none">{LOCATION_OPTIONS.map(x=><option key={x} value={x}>{x === 'Tumu' ? 'Tüm konumlar' : x}</option>)}</select></div>
-                <button type="button" onClick={() => { setListingsPage(1); refreshListings({ page: 1 }); scrollToListings(); }} disabled={loadingListings} className="min-h-[52px] rounded-2xl bg-slate-950 px-6 text-sm font-black text-white shadow-lg shadow-slate-950/25 transition hover:scale-[1.01] hover:bg-cyan-700 disabled:opacity-60 sm:col-span-2 lg:col-span-1 lg:min-h-[58px] dark:bg-cyan-500 dark:text-slate-950">{loadingListings && query.trim() ? 'Aranıyor...' : 'Ara'}</button>
-              </div>
-            </div>
-          </div>
+      <section className="relative min-h-[420px] overflow-hidden rounded-shell border border-slate-200/60 shadow-card dark:border-white/10 sm:min-h-[480px]">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-[var(--hero-overlay)]" aria-hidden="true" />
+        <div className="relative flex min-h-[420px] flex-col justify-end p-5 sm:min-h-[480px] sm:p-8 lg:p-10">
+          <h1 className="nm-hero-title max-w-3xl text-3xl font-black leading-tight text-white sm:text-5xl lg:text-[3.25rem] lg:leading-[1.08]">
+            Nouméa&apos;da Yeni Fırsatlar Sizi Bekliyor
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-white/90 sm:text-base sm:leading-7">
+            Güvenilir topluluk pazaryeri NouMarket&apos;te binlerce premium ilanı keşfedin.
+          </p>
+          <HeroSearchBar
+            query={query}
+            setQuery={setQuery}
+            selectedCategoryLabel={selectedCategoryLabel}
+            openCategorySurface={openCategorySurface}
+            location={location}
+            setLocation={setLocation}
+            loadingListings={loadingListings}
+            onSearch={() => { setListingsPage(1); refreshListings({ page: 1 }); scrollToListings(); }}
+            locationOptions={LOCATION_OPTIONS}
+          />
+          <HeroFeatureBar />
         </div>
       </section>
       <section className="mt-6">
         <SectionHeader eyebrow="Keşfet" title="Popüler kategoriler" action="Tüm kategoriler" onAction={openCategorySurface} />
-        <div className="-mx-1 flex snap-x gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-4 [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-1 flex snap-x gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:pb-0 xl:grid-cols-4 [&::-webkit-scrollbar]:hidden">
           {categoryShowcases.map(({ label, icon: Icon, tone, categoryId }) => (
-            <button key={label} type="button" onClick={() => handleHeroCategorySelect(categoryId, label)} className={'group min-w-[72vw] shrink-0 snap-start overflow-hidden rounded-[28px] bg-gradient-to-br p-5 text-left text-white shadow-xl shadow-slate-900/10 transition hover:-translate-y-0.5 sm:min-w-0 ' + tone}>
-              <Icon size={28}/>
-              <div className="mt-4 text-xl font-black sm:text-2xl">{label}</div>
-              <div className="mt-2 text-sm font-semibold text-white/82">{categoryCounts[categoryId] || 0} ilan</div>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide">Keşfet <ArrowRight size={14}/></div>
-            </button>
+            <Fragment key={label}>
+              <button type="button" onClick={() => handleHeroCategorySelect(categoryId, label)} className="flex min-w-[84px] shrink-0 snap-start flex-col items-center gap-2 sm:hidden">
+                <span className="grid h-[68px] w-[68px] place-items-center rounded-2xl bg-white text-brand-teal shadow-card ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-white/10"><Icon size={24}/></span>
+                <span className="max-w-[88px] truncate text-center text-xs font-bold text-slate-700 dark:text-slate-200">{label}</span>
+              </button>
+              <button type="button" onClick={() => handleHeroCategorySelect(categoryId, label)} className={`group hidden min-w-0 overflow-hidden rounded-shell bg-gradient-to-br p-5 text-left text-white shadow-card transition hover:-translate-y-0.5 sm:block ${tone}`}>
+                <Icon size={28}/>
+                <div className="mt-4 text-xl font-black sm:text-2xl">{label}</div>
+                <div className="mt-2 text-sm font-semibold text-white/82">{categoryCounts[categoryId] || 0} ilan</div>
+                <div className="mt-4 inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide">Keşfet <ArrowRight size={14}/></div>
+              </button>
+            </Fragment>
           ))}
         </div>
       </section>
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 md:grid-cols-4"><TrustMetric icon={ShieldCheck} title="Güvenli ilan deneyimi" text="Profil ve ilan bilgileriyle daha şeffaf alışveriş." /><TrustMetric icon={UserRound} title="Satıcı profilleri" text="Satıcıyı tanıyın, geçmiş ilanlarına göz atın." /><TrustMetric icon={Flag} title="Şikayet sistemi" text="Sorunlu ilanları bildirin, moderasyon ekibi incelesin." /><TrustMetric icon={Smartphone} title="Mobil uyumlu kullanım" text="Telefondan arayın, mesajlaşın ve ilan verin." /></section>
-      <ListingRail title="Öne çıkan ilanlar" eyebrow="Vitrin" items={featuredListings} onOpen={setSelected} onAction={scrollToListings} />
+      <ListingRail title="Premium İlanlar" eyebrow="Vitrin" items={featuredListings} onOpen={setSelected} onAction={scrollToListings} />
       <div ref={listingsSectionRef} className="scroll-mt-24" />
       <SearchFilters hideQueryField query={query} setQuery={setQuery} category={category} setCategory={setCategory} location={location} setLocation={setLocation} minPrice={minPrice} setMinPrice={setMinPrice} maxPrice={maxPrice} setMaxPrice={setMaxPrice} sort={sort} setSort={setSort} selectedCategory={selectedCategory} advancedFilters={advancedFilters} setAdvancedFilters={setAdvancedFilters} isLoading={loadingListings} onSearch={() => { setListingsPage(1); refreshListings({ page: 1 }); scrollToListings(); }} onClear={clearAllDiscoveryFilters} />
       <ActiveFilterChips query={query} categoryLabel={selectedCategoryLabel} location={location} minPrice={minPrice} maxPrice={maxPrice} sort={sort} onRemove={removeDiscoveryFilter} onClearAll={clearAllDiscoveryFilters} />
       {selectedCategory && <section className="mt-5 rounded-[28px] border border-cyan-200/70 bg-cyan-50/80 px-4 py-4 shadow-sm dark:border-cyan-300/20 dark:bg-cyan-400/10"><div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><div className="text-[11px] font-black uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Seçili kategori</div><div className="mt-1 truncate text-sm font-black text-slate-950 dark:text-white">{selectedPath.map((item) => item.label).join(' > ')}</div></div><button onClick={() => handleSidebarCategory(null)} className="nm-field shrink-0 rounded-full border px-4 py-2 text-xs font-black">Kategoriyi temizle</button></div></section>}
-      <section className="mt-5 pb-24 md:pb-5"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-600 dark:text-cyan-300">Keşfet</div><h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Son ilanlar</h2><p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{listingsCountLabel}</p></div><div className="flex gap-2">{displayIsAdmin && <button onClick={()=>setShowAdmin(true)} className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700 ring-1 ring-amber-200">{pending.length} onay bekliyor</button>}</div></div>{loadingListings ? <div><p className="mb-4 text-sm font-semibold text-slate-500 dark:text-slate-400">{query.trim() ? 'Aranıyor...' : 'İlanlar yükleniyor...'}</p><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-[360px] animate-pulse rounded-[28px] bg-[var(--surface)] ring-1 ring-[var(--field-border)]" />)}</div></div> : listingsError ? <div className="nm-panel rounded-[30px] border p-8 text-center shadow-sm"><div className="text-lg font-black text-slate-950 dark:text-white">İlanlar yüklenirken bir sorun oluştu</div><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{listingsError}</p><button onClick={() => refreshListings({ page: 1 })} className="mt-5 min-h-[48px] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white dark:bg-cyan-600">Tekrar dene</button></div> : listingsTotal === 0 ? <div className="nm-panel rounded-[30px] border p-8 text-center shadow-sm"><div className="text-lg font-black text-slate-950 dark:text-white">{emptyResultsTitle}</div><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{emptyResultsText}</p><button onClick={() => { if(!hasActiveDiscoveryFilters){ if(!user){ setShowAuth(true); return; } if (!ensureActiveAccount('İlan verme')) return; setShowCreate(true); return; } clearAllDiscoveryFilters(); }} className="mt-5 min-h-[48px] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white dark:bg-cyan-600">{hasActiveDiscoveryFilters ? 'Tüm filtreleri temizle' : 'İlan Ver'}</button></div> : <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{approved.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)} onFavorite={handleToggleFavorite} isFavorite={favoriteIds.includes(item.id)} />)}</div>{hasMoreListings ? <div className="mt-5 flex justify-center"><button type="button" onClick={loadMoreListings} disabled={loadingMoreListings} className="min-h-[48px] rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-cyan-600 dark:hover:bg-cyan-500">{loadingMoreListings ? 'Yükleniyor...' : 'Daha fazla göster'}</button></div> : null}</>}</section>
+      <section className="mt-5 pb-28 md:pb-5"><div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-[11px] font-black uppercase tracking-[0.22em] text-brand-teal dark:text-brand-teal-light">Keşfet</div><h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Son ilanlar</h2><p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{listingsCountLabel}</p></div><div className="flex gap-2">{displayIsAdmin && <button onClick={()=>setShowAdmin(true)} className="rounded-full bg-amber-50 px-4 py-2 text-xs font-black text-amber-700 ring-1 ring-amber-200">{pending.length} onay bekliyor</button>}</div></div>{loadingListings ? <div><p className="mb-4 text-sm font-semibold text-slate-500 dark:text-slate-400">{query.trim() ? 'Aranıyor...' : 'İlanlar yükleniyor...'}</p><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-[360px] animate-pulse rounded-[28px] bg-[var(--surface)] ring-1 ring-[var(--field-border)]" />)}</div></div> : listingsError ? <div className="nm-panel rounded-[30px] border p-8 text-center shadow-sm"><div className="text-lg font-black text-slate-950 dark:text-white">İlanlar yüklenirken bir sorun oluştu</div><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{listingsError}</p><button onClick={() => refreshListings({ page: 1 })} className="mt-5 min-h-[48px] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white dark:bg-cyan-600">Tekrar dene</button></div> : listingsTotal === 0 ? <div className="nm-panel rounded-[30px] border p-8 text-center shadow-sm"><div className="text-lg font-black text-slate-950 dark:text-white">{emptyResultsTitle}</div><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{emptyResultsText}</p><button onClick={() => { if(!hasActiveDiscoveryFilters){ if(!user){ setShowAuth(true); return; } if (!ensureActiveAccount('İlan verme')) return; setShowCreate(true); return; } clearAllDiscoveryFilters(); }} className="mt-5 min-h-[48px] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white dark:bg-cyan-600">{hasActiveDiscoveryFilters ? 'Tüm filtreleri temizle' : 'İlan Ver'}</button></div> : <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{approved.map(item=><ListingCard key={item.id} item={item} onClick={()=>setSelected(item)} onFavorite={handleToggleFavorite} isFavorite={favoriteIds.includes(item.id)} />)}</div>{hasMoreListings ? <div className="mt-5 flex justify-center"><button type="button" onClick={loadMoreListings} disabled={loadingMoreListings} className="min-h-[48px] rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-cyan-600 dark:hover:bg-cyan-500">{loadingMoreListings ? 'Yükleniyor...' : 'Daha fazla göster'}</button></div> : null}</>}</section>
     </div>
   </main>
 
@@ -855,6 +945,7 @@ export default function HomePage(){
           }}
           categoryCounts={categoryCounts}
           onPremiumClick={() => { setShowMobileCategories(false); setShowPricing(true); }}
+          onHomeClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="block max-h-[calc(100dvh-84px)] w-full overflow-y-auto rounded-3xl border border-[var(--field-border)] bg-[var(--surface-glass)] p-3 shadow-none"
         />
       </div>

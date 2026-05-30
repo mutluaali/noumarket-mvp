@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { ChevronDown, ChevronRight, Grid2X2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Grid2X2, Crown, Home } from 'lucide-react';
 import { CATEGORY_TREE, findCategoryNode, formatCount } from '@/lib/categorySchema';
 
 function useHydrated() {
@@ -39,10 +39,10 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
         aria-expanded={hasChildren ? isOpen : undefined}
         className={`flex w-full items-center gap-3 rounded-2xl text-left transition ${levelStyle} ${
           isSelected
-            ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100 dark:bg-cyan-400/10 dark:text-cyan-200 dark:ring-cyan-300/20'
+            ? 'bg-brand-soft text-brand-teal-dark ring-1 ring-brand-teal/15 dark:bg-brand-teal/10 dark:text-brand-teal-light dark:ring-brand-teal-light/20'
             : isMain
               ? 'text-slate-900 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10'
-              : 'text-slate-700 hover:bg-slate-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-cyan-200'
+              : 'text-slate-700 hover:bg-slate-50 hover:text-brand-teal dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-brand-teal-light'
         }`}
       >
         {isMain ? (
@@ -77,7 +77,7 @@ function CategoryNode({ node, level = 0, selectedCategoryId, openIds, onToggle, 
   );
 }
 
-export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory, categoryCounts = {}, onPremiumClick, className = '' }) {
+export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategory, categoryCounts = {}, onPremiumClick, onHomeClick, className = '' }) {
   const countsReady = useHydrated();
   const selected = selectedCategoryId ? findCategoryNode(selectedCategoryId) : null;
   const selectedPathIds = useMemo(() => selected?.path?.map((item) => item.id) || [], [selected]);
@@ -106,7 +106,7 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
     onSelectCategory(null);
   }
 
-  const shellClassName = className || 'hidden w-full self-start rounded-3xl border border-[var(--field-border)] bg-[var(--surface-glass)] p-3 shadow-xl backdrop-blur lg:sticky lg:top-[88px] lg:z-30 lg:block lg:min-h-[calc(100dvh-104px)]';
+  const shellClassName = className || 'hidden w-full self-start rounded-shell border border-[var(--field-border)] bg-[var(--surface-glass)] p-4 shadow-card backdrop-blur lg:sticky lg:top-[88px] lg:z-30 lg:block lg:min-h-[calc(100dvh-104px)]';
 
   return (
     <aside data-marketplace-sidebar="true" className={shellClassName}>
@@ -126,9 +126,20 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
 
       <button
         type="button"
+        onClick={() => {
+          onHomeClick?.();
+          resetAll();
+        }}
+        className="mb-2 flex w-full items-center gap-3 rounded-2xl bg-brand-soft px-3 py-2.5 text-left text-sm font-black text-brand-teal-dark ring-1 ring-brand-teal/15 dark:bg-brand-teal/10 dark:text-brand-teal-light dark:ring-brand-teal-light/20"
+      >
+        <Home size={18} /> Ana Sayfa
+      </button>
+
+      <button
+        type="button"
         onClick={resetAll}
         className={`mb-2 flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-black ${
-          !selectedCategoryId ? 'bg-cyan-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
+          !selectedCategoryId ? 'bg-brand-teal text-white shadow-md shadow-brand-teal/20' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10'
         }`}
       >
         <Grid2X2 size={16} /> Tüm ilanlar
@@ -149,11 +160,13 @@ export default function MarketplaceSidebar({ selectedCategoryId, onSelectCategor
         ))}
       </div>
 
-      <div className="mt-3 shrink-0 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm shadow-sm dark:border-amber-300/20 dark:bg-amber-300/10">
-        <div className="text-2xl">👑</div>
-        <div className="mt-1 font-black text-amber-800 dark:text-amber-200">Öne çıkan paketlere geç</div>
-        <p className="mt-1 text-xs leading-4 text-amber-700/80 dark:text-amber-100/70">Daha fazla görünürlük, öncelikli destek ve satıcı avantajları.</p>
-        <button type="button" onClick={onPremiumClick} className="mt-2 w-full cursor-pointer rounded-xl bg-cyan-600 px-3 py-2 text-xs font-black text-white transition hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-300">Premium paketleri</button>
+      <div className="mt-4 shrink-0 rounded-panel border border-amber-200/80 bg-gradient-to-br from-amber-50 to-white p-4 text-sm shadow-sm dark:border-amber-300/20 dark:from-amber-400/10 dark:to-brand-charcoal/40">
+        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200">
+          <Crown size={20} />
+        </div>
+        <div className="mt-2 font-black text-slate-900 dark:text-white">Premium&apos;a Yüksel</div>
+        <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Daha fazla görünürlük, öncelikli destek ve satıcı avantajları.</p>
+        <button type="button" onClick={onPremiumClick} className="mt-3 w-full cursor-pointer rounded-2xl bg-brand-teal px-3 py-2.5 text-xs font-black text-white transition hover:bg-brand-teal-dark focus:outline-none focus:ring-2 focus:ring-brand-teal/30">Premium&apos;u Keşfet</button>
       </div>
     </aside>
   );

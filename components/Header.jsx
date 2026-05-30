@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   Sun,
+  Palmtree,
 } from 'lucide-react';
 
 function useHydrated() {
@@ -77,20 +78,20 @@ export default function Header({
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/85 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85">
-      <div className="mx-auto flex max-w-[1560px] items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3 md:px-5">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-brand-charcoal/90">
+      <div className="mx-auto flex max-w-[1560px] items-center gap-2 px-2 py-2.5 sm:gap-3 sm:px-3 md:px-5">
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="flex shrink-0 items-center gap-2 rounded-2xl px-1 py-1 text-left"
+          className="flex shrink-0 items-center gap-2.5 rounded-2xl px-1 py-1 text-left"
           aria-label="NouMarket ana sayfa"
         >
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-600 text-base font-black text-white shadow-sm sm:h-12 sm:w-12 sm:text-lg">
-            ✦
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-teal text-white shadow-md shadow-brand-teal/25 sm:h-11 sm:w-11">
+            <Palmtree size={22} strokeWidth={2.2} />
           </div>
           <div className="hidden leading-none sm:block">
-            <div className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">Nou<span className="text-cyan-600">Market</span></div>
-            <div className="mt-1 text-[11px] font-black tracking-[0.32em] text-cyan-500">İLAN PAZARI</div>
+            <div className="text-xl font-black tracking-tight text-slate-950 dark:text-white md:text-2xl">NouMarket</div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.28em] text-brand-teal dark:text-brand-teal-light">Yeni Kaledonya</div>
           </div>
         </button>
 
@@ -99,7 +100,7 @@ export default function Header({
             event.preventDefault();
             onSearchSubmit?.();
           }}
-          className="relative z-10 hidden min-w-0 flex-1 items-center rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-transparent focus-within:border-cyan-600 focus-within:ring-cyan-100 dark:border-white/10 dark:bg-white/5 dark:focus-within:ring-cyan-400/20 md:flex"
+          className="relative z-10 hidden min-w-0 flex-1 items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-transparent focus-within:border-brand-teal focus-within:ring-brand-teal/15 dark:border-white/10 dark:bg-white/5 dark:focus-within:ring-brand-teal-light/20 md:flex"
         >
           <button
             type="button"
@@ -122,7 +123,7 @@ export default function Header({
 
           <button
             type="submit"
-            className="grid h-14 w-16 shrink-0 place-items-center rounded-r-2xl bg-cyan-700 text-white transition hover:bg-cyan-800"
+            className="grid h-14 w-16 shrink-0 place-items-center bg-brand-teal text-white transition hover:bg-brand-teal-dark"
             aria-label="Ara"
           >
             <Search size={23} />
@@ -165,15 +166,25 @@ export default function Header({
           <button
             type="button"
             onClick={onPricing}
-            className="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-200 md:inline-flex"
+            className="hidden items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-800 transition hover:bg-amber-100 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-200 lg:inline-flex"
           >
-            <Crown size={18} /> Premium paketleri
+            <Crown size={18} /> Premium
           </button>
+
+          {!activeUser ? (
+            <button
+              type="button"
+              onClick={onAuth}
+              className="hidden text-sm font-bold text-slate-700 transition hover:text-brand-teal dark:text-slate-200 dark:hover:text-brand-teal-light md:inline-flex"
+            >
+              Giriş Yap
+            </button>
+          ) : null}
 
           <button
             type="button"
             onClick={onCreate}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-3 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-cyan-800 sm:gap-2 sm:px-4 sm:py-3"
+            className="inline-flex items-center gap-1.5 rounded-2xl bg-brand-teal px-3 py-2.5 text-sm font-black text-white shadow-md shadow-brand-teal/20 transition hover:bg-brand-teal-dark sm:gap-2 sm:px-4 sm:py-3"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">İlan Ver</span>
@@ -234,8 +245,8 @@ export default function Header({
         }}
         className="border-t border-slate-100 px-3 py-2 dark:border-white/10 md:hidden"
       >
-        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 focus-within:border-cyan-600 dark:border-white/10 dark:bg-white/5">
-          <Search size={18} className="text-slate-400" />
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm focus-within:border-brand-teal dark:border-white/10 dark:bg-white/5">
+          <Search size={18} className="text-brand-teal dark:text-brand-teal-light" />
           <input
             type="search"
             value={searchQuery ?? ''}
@@ -245,7 +256,7 @@ export default function Header({
             autoComplete="off"
             className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
           />
-          <button type="submit" className="rounded-xl bg-cyan-700 px-3 py-2 text-xs font-black text-white">Ara</button>
+          <button type="submit" className="rounded-xl bg-brand-teal px-3 py-2 text-xs font-black text-white shadow-sm">Ara</button>
         </div>
       </form>
     </header>
